@@ -42,3 +42,16 @@ if (CMAKE_SYSTEM_PROCESSOR STREQUAL "mips64")
         -mxgot
     )
 endif()
+
+if (ANDROID)
+    set_source_files_properties(
+        ${CMAKE_CURRENT_BINARY_DIR}/gen/scheme.cpp
+    PROPERTIES
+        COMPILE_OPTIONS "-O0;-g0"
+    )
+    set_source_files_properties(
+        ${CMAKE_CURRENT_BINARY_DIR}/gen/scheme-dump_to_text.cpp
+    PROPERTIES
+        COMPILE_OPTIONS "-O0;-g0"
+    )
+endif()

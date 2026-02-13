@@ -99,6 +99,8 @@ private:
 #include "platform/win/overlay_widget_win.h"
 #elif defined Q_OS_MAC // Q_OS_WIN
 #include "platform/mac/overlay_widget_mac.h"
+#elif defined Q_OS_ANDROID // Q_OS_WIN || Q_OS_MAC
+#include "platform/android/overlay_widget_android.h"
 #else // Q_OS_WIN || Q_OS_MAC
 #include "platform/linux/overlay_widget_linux.h"
 #endif // else for Q_OS_WIN || Q_OS_MAC

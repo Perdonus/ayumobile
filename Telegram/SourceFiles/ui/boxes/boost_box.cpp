@@ -5,6 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
+#include "ui/ui_pch.h"
 #include "ui/boxes/boost_box.h"
 
 #include "info/profile/info_profile_icon.h"

@@ -1,0 +1,186 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3dbce30..be5b820 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,6 +10,30 @@ init_target(lib_webrtc)
+ 
+ get_filename_component(src_loc . REALPATH)
+ 
++if (WIN32)
++    set(webrtc_platform_sources
++        webrtc/platform/win/webrtc_environment_win.cpp
++        webrtc/platform/win/webrtc_environment_win.h
++        webrtc/platform/win/webrtc_loopback_adm_win.cpp
++        webrtc/platform/win/webrtc_loopback_adm_win.h
++    )
++elseif (APPLE)
++    set(webrtc_platform_sources
++        webrtc/platform/mac/webrtc_environment_mac.h
++        webrtc/platform/mac/webrtc_environment_mac.mm
++    )
++elseif (ANDROID)
++    set(webrtc_platform_sources
++        webrtc/platform/android/webrtc_environment_android.cpp
++        webrtc/platform/android/webrtc_environment_android.h
++    )
++else()
++    set(webrtc_platform_sources
++        webrtc/platform/linux/webrtc_environment_linux.cpp
++        webrtc/platform/linux/webrtc_environment_linux.h
++    )
++endif()
++
+ target_precompile_headers(lib_webrtc PRIVATE ${src_loc}/webrtc/webrtc_pch.h)
+ nice_target_sources(lib_webrtc ${src_loc}
+ PRIVATE
+@@ -32,14 +56,7 @@ PRIVATE
+     webrtc/details/webrtc_openal_adm.cpp
+     webrtc/details/webrtc_openal_adm.h
+ 
+-    webrtc/platform/linux/webrtc_environment_linux.cpp
+-    webrtc/platform/linux/webrtc_environment_linux.h
+-    webrtc/platform/mac/webrtc_environment_mac.h
+-    webrtc/platform/mac/webrtc_environment_mac.mm
+-    webrtc/platform/win/webrtc_environment_win.cpp
+-    webrtc/platform/win/webrtc_environment_win.h
+-    webrtc/platform/win/webrtc_loopback_adm_win.cpp
+-    webrtc/platform/win/webrtc_loopback_adm_win.h
++    ${webrtc_platform_sources}
+     webrtc/platform/webrtc_platform_environment.h
+ 
+     webrtc/webrtc_pch.h
+diff --git a/webrtc/platform/android/webrtc_environment_android.cpp b/webrtc/platform/android/webrtc_environment_android.cpp
+new file mode 100644
+index 0000000..31eb203
+--- /dev/null
++++ b/webrtc/platform/android/webrtc_environment_android.cpp
+@@ -0,0 +1,80 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "webrtc/platform/android/webrtc_environment_android.h"
++
++namespace Webrtc::Platform {
++
++EnvironmentAndroid::EnvironmentAndroid(
++		not_null<EnvironmentDelegate*> delegate)
++: _audioFallback(delegate)
++, _cameraFallback(delegate) {
++}
++
++EnvironmentAndroid::~EnvironmentAndroid() = default;
++
++QString EnvironmentAndroid::defaultId(DeviceType type) {
++	return (type == DeviceType::Camera)
++		? _cameraFallback.defaultId(type)
++		: _audioFallback.defaultId(type);
++}
++
++DeviceInfo EnvironmentAndroid::device(DeviceType type, const QString &id) {
++	return (type == DeviceType::Camera)
++		? _cameraFallback.device(type, id)
++		: _audioFallback.device(type, id);
++}
++
++std::vector<DeviceInfo> EnvironmentAndroid::devices(DeviceType type) {
++	return (type == DeviceType::Camera)
++		? _cameraFallback.devices(type)
++		: _audioFallback.devices(type);
++}
++
++bool EnvironmentAndroid::refreshFullListOnChange(DeviceType type) {
++	return (type == DeviceType::Camera)
++		? _cameraFallback.refreshFullListOnChange(type)
++		: _audioFallback.refreshFullListOnChange(type);
++}
++
++bool EnvironmentAndroid::desktopCaptureAllowed() const {
++	return false;
++}
++
++std::optional<QString> EnvironmentAndroid::uniqueDesktopCaptureSource() const {
++	return std::nullopt;
++}
++
++void EnvironmentAndroid::defaultIdRequested(DeviceType type) {
++	if (type == DeviceType::Camera) {
++		_cameraFallback.defaultIdRequested(type);
++	} else {
++		_audioFallback.defaultIdRequested(type);
++	}
++}
++
++void EnvironmentAndroid::devicesRequested(DeviceType type) {
++	if (type == DeviceType::Camera) {
++		_cameraFallback.devicesRequested(type);
++	} else {
++		_audioFallback.devicesRequested(type);
++	}
++}
++
++DeviceResolvedId EnvironmentAndroid::threadSafeResolveId(
++		const DeviceResolvedId &lastResolvedId,
++		const QString &savedId) {
++	return (lastResolvedId.type == DeviceType::Camera)
++		? _cameraFallback.threadSafeResolveId(lastResolvedId, savedId)
++		: _audioFallback.threadSafeResolveId(lastResolvedId, savedId);
++}
++
++std::unique_ptr<Environment> CreateEnvironment(
++		not_null<EnvironmentDelegate*> delegate) {
++	return std::make_unique<EnvironmentAndroid>(delegate);
++}
++
++} // namespace Webrtc::Platform
+diff --git a/webrtc/platform/android/webrtc_environment_android.h b/webrtc/platform/android/webrtc_environment_android.h
+new file mode 100644
+index 0000000..8f15761
+--- /dev/null
++++ b/webrtc/platform/android/webrtc_environment_android.h
+@@ -0,0 +1,43 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#pragma once
++
++#include "webrtc/platform/webrtc_platform_environment.h"
++
++#include "webrtc/details/webrtc_environment_openal.h"
++#include "webrtc/details/webrtc_environment_video_capture.h"
++
++namespace Webrtc::Platform {
++
++class EnvironmentAndroid final : public Environment {
++public:
++	explicit EnvironmentAndroid(not_null<EnvironmentDelegate*> delegate);
++	~EnvironmentAndroid();
++
++	QString defaultId(DeviceType type) override;
++	DeviceInfo device(DeviceType type, const QString &id) override;
++
++	std::vector<DeviceInfo> devices(DeviceType type) override;
++	bool refreshFullListOnChange(DeviceType type) override;
++
++	bool desktopCaptureAllowed() const override;
++	std::optional<QString> uniqueDesktopCaptureSource() const override;
++
++	void defaultIdRequested(DeviceType type) override;
++	void devicesRequested(DeviceType type) override;
++
++	DeviceResolvedId threadSafeResolveId(
++		const DeviceResolvedId &lastResolvedId,
++		const QString &savedId) override;
++
++private:
++	details::EnvironmentOpenAL _audioFallback;
++	details::EnvironmentVideoCapture _cameraFallback;
++
++};
++
++} // namespace Webrtc::Platform

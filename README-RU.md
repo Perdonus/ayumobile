@@ -107,6 +107,12 @@ Flatpak: https://github.com/0FL01/AyuGramDesktop-flatpak
 
 Или следуйте [официальному руководству](https://github.com/AyuGram/AyuGramDesktop/blob/dev/docs/building-linux.md).
 
+### Android
+
+В репозитории доступна нативная сборка APK для Android (Qt/C++).
+
+Инструкция по сборке: [docs/building-android.md](docs/building-android.md)
+
 ### Примечания для Windows
 
 Убедитесь что у вас присутствуют эти зависимости:

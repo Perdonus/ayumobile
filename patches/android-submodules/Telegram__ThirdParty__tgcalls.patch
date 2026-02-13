@@ -1,0 +1,17 @@
+diff --git a/tgcalls/group/GroupInstanceCustomImpl.cpp b/tgcalls/group/GroupInstanceCustomImpl.cpp
+index 17bfa52..5d94779 100644
+--- a/tgcalls/group/GroupInstanceCustomImpl.cpp
++++ b/tgcalls/group/GroupInstanceCustomImpl.cpp
+@@ -722,10 +722,10 @@ public:
+     _noiseSuppressionConfiguration(noiseSuppressionConfiguration),
+     _externalAudioSamples(externalAudioSamples),
+     _externalAudioSamplesMutex(externalAudioSamplesMutex) {
+-        int frameSize = rnnoise_get_frame_size();
++        constexpr auto frameSize = 480;
+         _frameSamples.resize(frameSize);
+ 
+-        _denoiseState = rnnoise_create(nullptr);
++        _denoiseState = rnnoise_create();
+     }
+ 
+     virtual ~AudioCapturePostProcessor() {

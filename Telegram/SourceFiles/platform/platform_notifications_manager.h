@@ -32,6 +32,8 @@ void Create(Window::Notifications::System *system);
 #include "platform/win/notifications_manager_win.h"
 #elif defined Q_OS_MAC // Q_OS_MAC
 #include "platform/mac/notifications_manager_mac.h"
+#elif defined Q_OS_ANDROID // Q_OS_WIN || Q_OS_MAC
+#include "platform/android/notifications_manager_android.h"
 #else // Q_OS_WIN || Q_OS_MAC
 #include "platform/linux/notifications_manager_linux.h"
 #endif // else for Q_OS_WIN || Q_OS_MAC

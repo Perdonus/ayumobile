@@ -1,0 +1,92 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4b94509..10969af 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -25,6 +25,8 @@ PRIVATE
+     webview/platform/mac/webview_mac.h
+     webview/platform/mac/webview_mac.mm
+ 
++    webview/platform/android/webview_android.cpp
++
+     webview/platform/linux/webview_linux.h
+     webview/platform/linux/webview_linux.cpp
+     webview/platform/linux/webview_linux_compositor.cpp
+@@ -46,6 +48,23 @@ PRIVATE
+     webview/platform/win/webview_windows_edge_html.h
+ )
+ 
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    file(GLOB linux_platform_sources RELATIVE ${src_loc}
++        webview/platform/linux/*
++    )
++    file(GLOB mac_platform_sources RELATIVE ${src_loc}
++        webview/platform/mac/*
++    )
++    file(GLOB win_platform_sources RELATIVE ${src_loc}
++        webview/platform/win/*
++    )
++    remove_target_sources(lib_webview ${src_loc}
++        ${linux_platform_sources}
++        ${mac_platform_sources}
++        ${win_platform_sources}
++    )
++endif()
++
+ target_include_directories(lib_webview
+ PUBLIC
+     ${src_loc}
+@@ -59,7 +78,7 @@ PUBLIC
+ 
+ if (WIN32)
+     nuget_add_webview(lib_webview)
+-elseif (LINUX)
++elseif (LINUX AND NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
+     include(${cmake_helpers_loc}/external/glib/generate_dbus.cmake)
+     generate_dbus(lib_webview org.desktop_app.GtkIntegration.Webview. Webview ${src_loc}/webview/platform/linux/webview_linux_interface.xml)
+ 
+diff --git a/webview/platform/android/webview_android.cpp b/webview/platform/android/webview_android.cpp
+new file mode 100644
+index 0000000..89a19a0
+--- /dev/null
++++ b/webview/platform/android/webview_android.cpp
+@@ -0,0 +1,40 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "webview/webview_interface.h"
++
++namespace Webview {
++
++Available Availability() {
++	return {
++		.error = Available::Error::NoWebKitGTK,
++		.customSchemeRequests = false,
++		.customRangeRequests = false,
++		.customReferer = false,
++		.details = "WebView backend is not implemented for Android target",
++	};
++}
++
++bool SupportsEmbedAfterCreate() {
++	return false;
++}
++
++bool SeparateStorageIdSupported() {
++	return false;
++}
++
++std::unique_ptr<Interface> CreateInstance(Config config) {
++	return nullptr;
++}
++
++std::string GenerateStorageToken() {
++	return {};
++}
++
++void ClearStorageDataByToken(const std::string &token) {
++}
++
++} // namespace Webview

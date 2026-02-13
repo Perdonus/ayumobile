@@ -5,6 +5,7 @@ the official desktop application for the Telegram messaging service.
 For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
+#include "iv/iv_pch.h"
 #include "iv/iv_controller.h"
 
 #include "base/event_filter.h"
@@ -45,12 +46,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonValue>
 #include <QtCore/QFile>
+#include <QtCore/QUrl>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
 #include <QtGui/QWindow>
 #include <charconv>
-
-#include <ada.h>
 
 // AyuGram includes
 #include "ayu/features/streamer_mode/streamer_mode.h"
@@ -320,12 +320,15 @@ private:
 
 [[nodiscard]] QString TonsiteToHttps(QString value) {
 	const auto ChangeHost = [](QString tonsite) {
-		const auto fake = "http://" + tonsite.toStdString();
-		const auto parsed = ada::parse<ada::url>(fake);
-		if (!parsed) {
+		const auto parsed = QUrl("http://" + tonsite, QUrl::StrictMode);
+		if (!parsed.isValid()) {
 			return QString();
 		}
-		tonsite = QString::fromStdString(parsed->get_hostname());
+		tonsite = QString::fromLatin1(QUrl::toAce(
+			parsed.host(QUrl::FullyDecoded)));
+		if (tonsite.isEmpty()) {
+			return QString();
+		}
 		tonsite = tonsite.replace('-', "-h");
 		tonsite = tonsite.replace('.', "-d");
 		return tonsite + ".magic.org";
@@ -352,17 +355,8 @@ private:
 		https = https.mid(0, dot);
 		https = https.replace("-d", ".");
 		https = https.replace("-h", "-");
-		auto parts = https.split('.');
-		for (auto &part : parts) {
-			if (part.startsWith(u"xn--"_q)) {
-				const auto utf8 = part.mid(4).toStdString();
-				auto out = std::u32string();
-				if (ada::idna::punycode_to_utf32(utf8, out)) {
-					part = QString::fromUcs4(out.data(), out.size());
-				}
-			}
-		}
-		return parts.join('.');
+		const auto decoded = QUrl::fromAce(https.toLatin1());
+		return decoded.isEmpty() ? https : decoded;
 	};
 	const auto prefix = u"https://"_q;
 	if (!value.toLower().startsWith(prefix)) {

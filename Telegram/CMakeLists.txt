@@ -31,7 +31,9 @@ include(cmake/telegram_options.cmake)
 include(cmake/lib_ffmpeg.cmake)
 include(cmake/lib_stripe.cmake)
 include(cmake/lib_tgcalls.cmake)
-include(cmake/lib_prisma.cmake)
+if (NOT ANDROID)
+    include(cmake/lib_prisma.cmake)
+endif()
 include(cmake/td_export.cmake)
 include(cmake/td_iv.cmake)
 include(cmake/td_lang.cmake)
@@ -54,6 +56,13 @@ if (WIN32)
 endif()
 
 set_target_properties(Telegram PROPERTIES AUTOMOC ON)
+
+if (ANDROID)
+    set_target_properties(Telegram PROPERTIES
+        QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
+        ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
+    )
+endif()
 
 target_link_libraries(Telegram
 PRIVATE
@@ -127,7 +136,7 @@ set(ayugram_files
         ayu/utils/taptic_engine/taptic_engine.h
         ayu/utils/taptic_engine/platform/taptic_engine_dummy.cpp
         ayu/utils/taptic_engine/platform/taptic_engine_dummy.h
-        ayu/utils/taptic_engine/platform/taptic_engine_mac.mm
+        $<$<BOOL:${APPLE}>:ayu/utils/taptic_engine/platform/taptic_engine_mac.mm>
         ayu/utils/taptic_engine/platform/taptic_engine_mac.h
         ayu/ui/ayu_logo.cpp
         ayu/ui/ayu_logo.h
@@ -198,12 +207,12 @@ set(ayugram_files
         ayu/libs/sqlite/sqlite3.c
         ayu/libs/sqlite/sqlite3.h
         ayu/libs/sqlite/sqlite_orm.h
-        ayu/features/streamer_mode/platform/streamer_mode_win.cpp
-        ayu/features/streamer_mode/platform/streamer_mode_win.h
-        ayu/features/streamer_mode/platform/streamer_mode_linux.cpp
-        ayu/features/streamer_mode/platform/streamer_mode_linux.h
-        ayu/features/streamer_mode/platform/streamer_mode_mac.cpp
-        ayu/features/streamer_mode/platform/streamer_mode_mac.h
+        $<$<BOOL:${WIN32}>:ayu/features/streamer_mode/platform/streamer_mode_win.cpp>
+        $<$<BOOL:${WIN32}>:ayu/features/streamer_mode/platform/streamer_mode_win.h>
+        $<$<AND:$<NOT:$<BOOL:${WIN32}>>,$<NOT:$<BOOL:${APPLE}>>>:ayu/features/streamer_mode/platform/streamer_mode_linux.cpp>
+        $<$<AND:$<NOT:$<BOOL:${WIN32}>>,$<NOT:$<BOOL:${APPLE}>>>:ayu/features/streamer_mode/platform/streamer_mode_linux.h>
+        $<$<BOOL:${APPLE}>:ayu/features/streamer_mode/platform/streamer_mode_mac.cpp>
+        $<$<BOOL:${APPLE}>:ayu/features/streamer_mode/platform/streamer_mode_mac.h>
         ayu/features/streamer_mode/streamer_mode.cpp
         ayu/features/streamer_mode/streamer_mode.h
         ayu/features/message_shot/message_shot.cpp
@@ -243,6 +252,15 @@ set(ayugram_files
 )
 
 target_precompile_headers(Telegram PRIVATE $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:${src_loc}/stdafx.h>)
+if (ANDROID)
+    set_source_files_properties(
+        ${src_loc}/boxes/filters/edit_filter_box.cpp
+        ${src_loc}/boxes/peers/edit_peer_color_box.cpp
+        PROPERTIES
+            COMPILE_OPTIONS "-O0;-g0"
+            SKIP_PRECOMPILE_HEADERS ON
+    )
+endif()
 nice_target_sources(Telegram ${src_loc}
 PRIVATE
     ${style_files}
@@ -1541,6 +1559,24 @@ PRIVATE
     payments/payments_non_panel_process.h
     payments/payments_reaction_process.cpp
     payments/payments_reaction_process.h
+    platform/android/file_utilities_android.cpp
+    platform/android/file_utilities_android.h
+    platform/android/launcher_android.cpp
+    platform/android/launcher_android.h
+    platform/android/integration_android.cpp
+    platform/android/integration_android.h
+    platform/android/main_window_android.cpp
+    platform/android/main_window_android.h
+    platform/android/notifications_manager_android.cpp
+    platform/android/notifications_manager_android.h
+    platform/android/overlay_widget_android.h
+    platform/android/specific_android.cpp
+    platform/android/specific_android.h
+    platform/android/tray_android.cpp
+    platform/android/tray_android.h
+    platform/android/webauthn_android.cpp
+    platform/android/current_geo_location_android.h
+    platform/android/text_recognition_android.h
     platform/linux/file_utilities_linux.cpp
     platform/linux/file_utilities_linux.h
     platform/linux/launcher_linux.cpp
@@ -1932,6 +1968,24 @@ PRIVATE
     tray.h
 )
 
+if (ANDROID)
+    file(GLOB_RECURSE telegram_non_android_platform_sources
+        "${src_loc}/platform/linux/*"
+        "${src_loc}/platform/mac/*"
+        "${src_loc}/platform/win/*"
+    )
+    set(telegram_non_android_platform_relative)
+    foreach(entry ${telegram_non_android_platform_sources})
+        if (NOT IS_DIRECTORY "${entry}")
+            file(RELATIVE_PATH relative "${src_loc}" "${entry}")
+            list(APPEND telegram_non_android_platform_relative "${relative}")
+        endif()
+    endforeach()
+    remove_target_sources(Telegram ${src_loc}
+        ${telegram_non_android_platform_relative}
+    )
+endif()
+
 if (NOT build_winstore)
     remove_target_sources(Telegram ${src_loc}
         platform/win/windows_start_task.cpp
@@ -2090,6 +2144,7 @@ elseif (APPLE)
             COMMAND cp ${CRASHPAD_HANDLER} $<TARGET_FILE_DIR:Telegram>/../Helpers/
         )
     endif()
+elseif (ANDROID)
 else()
     include(${cmake_helpers_loc}/external/glib/generate_dbus.cmake)
     generate_dbus(Telegram org.freedesktop.portal. XdpBackground ${third_party_loc}/xdg-desktop-portal/data/org.freedesktop.portal.Background.xml)
@@ -2256,7 +2311,10 @@ endif()
 
 target_prepare_qrc(Telegram)
 
-if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE AND NOT build_macstore AND NOT build_winstore)
+if (NOT ANDROID
+    AND NOT DESKTOP_APP_DISABLE_AUTOUPDATE
+    AND NOT build_macstore
+    AND NOT build_winstore)
     add_executable(Updater WIN32)
     init_non_host_target(Updater)
 

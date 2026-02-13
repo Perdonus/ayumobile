@@ -11,6 +11,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "platform/win/integration_win.h"
 #elif defined Q_OS_MAC // Q_OS_WINRT || Q_OS_WIN
 #include "platform/mac/integration_mac.h"
+#elif defined Q_OS_ANDROID // Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
+#include "platform/android/integration_android.h"
 #else // Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
 #include "platform/linux/integration_linux.h"
 #endif // else Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC

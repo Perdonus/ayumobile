@@ -9,6 +9,12 @@ init_non_host_target(td_iv)
 add_library(tdesktop::td_iv ALIAS td_iv)
 
 target_precompile_headers(td_iv PRIVATE ${src_loc}/iv/iv_pch.h)
+if (ANDROID)
+    set_source_files_properties(${src_loc}/iv/iv_controller.cpp PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+        COMPILE_OPTIONS "-O0;-g0"
+    )
+endif()
 nice_target_sources(td_iv ${src_loc}
 PRIVATE
     iv/iv_controller.cpp
@@ -38,7 +44,6 @@ PUBLIC
     tdesktop::td_scheme
 PRIVATE
     desktop-app::lib_webview
-    desktop-app::external_ada
     tdesktop::td_lang
     tdesktop::td_ui
 )

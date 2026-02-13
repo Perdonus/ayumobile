@@ -1,0 +1,259 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 054c0e3..6b31ca9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -139,6 +139,9 @@ PRIVATE
+     ui/platform/win/ui_windows_native_event_filter.h
+     ui/platform/win/ui_utility_win.cpp
+     ui/platform/win/ui_utility_win.h
++    ui/platform/android/ui_utility_android.h
++    ui/platform/android/ui_window_android.cpp
++    ui/platform/android/ui_window_title_android.cpp
+     ui/platform/ui_platform_window_title.cpp
+     ui/platform/ui_platform_window_title.h
+     ui/platform/ui_platform_window.cpp
+@@ -329,6 +332,27 @@ if (DESKTOP_APP_USE_PACKAGED_FONTS)
+     remove_target_sources(lib_ui ${src_loc} fonts/fonts.qrc)
+ endif()
+ 
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    file(GLOB linux_platform_sources RELATIVE ${src_loc}
++        ui/platform/linux/*.cpp
++        ui/platform/linux/*.h
++    )
++    file(GLOB mac_platform_sources RELATIVE ${src_loc}
++        ui/platform/mac/*.cpp
++        ui/platform/mac/*.mm
++        ui/platform/mac/*.h
++    )
++    file(GLOB_RECURSE win_platform_sources RELATIVE ${src_loc}
++        ui/platform/win/*
++    )
++    remove_target_sources(lib_ui ${src_loc}
++        ${linux_platform_sources}
++        ${mac_platform_sources}
++        ${win_platform_sources}
++        qt_conf/win.qrc
++    )
++endif()
++
+ target_include_directories(lib_ui
+ PUBLIC
+     ${src_loc}
+diff --git a/ui/gl/gl_image.cpp b/ui/gl/gl_image.cpp
+index 62a48cd..ead2b5e 100644
+--- a/ui/gl/gl_image.cpp
++++ b/ui/gl/gl_image.cpp
+@@ -89,7 +89,16 @@ void Image::bind(QOpenGLFunctions &f) {
+ 	}
+ 	_textures.bind(f, 0);
+ 	if (upload) {
++		QImage uploadImage;
++#if defined(GL_UNPACK_ROW_LENGTH)
++		const auto uploadBits = _image.constBits();
+ 		f.glPixelStorei(GL_UNPACK_ROW_LENGTH, _image.bytesPerLine() / 4);
++#else
++		uploadImage = (_subimage == _image.size())
++			? _image.copy()
++			: _image.copy(QRect(QPoint(), _subimage));
++		const auto uploadBits = uploadImage.constBits();
++#endif
+ 		if (_textureSize.width() < _subimage.width()
+ 			|| _textureSize.height() < _subimage.height()) {
+ 			_textureSize = _subimage;
+@@ -102,7 +111,7 @@ void Image::bind(QOpenGLFunctions &f) {
+ 				0,
+ 				kFormatRGBA,
+ 				GL_UNSIGNED_BYTE,
+-				_image.constBits());
++				uploadBits);
+ 		} else {
+ 			f.glTexSubImage2D(
+ 				GL_TEXTURE_2D,
+@@ -113,9 +122,11 @@ void Image::bind(QOpenGLFunctions &f) {
+ 				_subimage.height(),
+ 				kFormatRGBA,
+ 				GL_UNSIGNED_BYTE,
+-				_image.constBits());
++				uploadBits);
+ 		}
++#if defined(GL_UNPACK_ROW_LENGTH)
+ 		f.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
++#endif
+ 	}
+ }
+ 
+diff --git a/ui/platform/ui_platform_utility.h b/ui/platform/ui_platform_utility.h
+index 7c85d68..ad5bbb3 100644
+--- a/ui/platform/ui_platform_utility.h
++++ b/ui/platform/ui_platform_utility.h
+@@ -52,6 +52,8 @@ void FixPopupMenuNativeEmojiPopup(not_null<PopupMenu*> menu);
+ #include "ui/platform/win/ui_utility_win.h"
+ #elif defined Q_OS_MAC // Q_OS_WINRT || Q_OS_WIN
+ #include "ui/platform/mac/ui_utility_mac.h"
++#elif defined Q_OS_ANDROID // Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
++#include "ui/platform/android/ui_utility_android.h"
+ #else // Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
+ #include "ui/platform/linux/ui_utility_linux.h"
+ #endif // else for Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
+diff --git a/ui/style/style_core_scale.h b/ui/style/style_core_scale.h
+index 23ea43b..9024237 100644
+--- a/ui/style/style_core_scale.h
++++ b/ui/style/style_core_scale.h
+@@ -8,6 +8,7 @@
+ 
+ #include "base/algorithm.h"
+ #include "base/assertion.h"
++#include "base/basic_types.h"
+ 
+ #include <QtCore/QSize>
+ 
+diff --git a/ui/platform/android/ui_utility_android.h b/ui/platform/android/ui_utility_android.h
+new file mode 100644
+index 0000000..9fd137c
+--- /dev/null
++++ b/ui/platform/android/ui_utility_android.h
+@@ -0,0 +1,86 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#pragma once
++
++#include "ui/platform/ui_platform_utility.h"
++
++#include <QtGui/QGuiApplication>
++#include <QtGui/QWindow>
++#include <QtWidgets/QWidget>
++
++namespace Ui {
++namespace Platform {
++
++inline bool IsApplicationActive() {
++	return (QGuiApplication::applicationState() == Qt::ApplicationActive);
++}
++
++inline bool TranslucentWindowsSupported() {
++	return true;
++}
++
++inline void InitOnTopPanel(not_null<QWidget*> panel) {
++}
++
++inline void DeInitOnTopPanel(not_null<QWidget*> panel) {
++}
++
++inline void ReInitOnTopPanel(not_null<QWidget*> panel) {
++}
++
++inline void ShowOverAll(not_null<QWidget*> widget, bool canFocus) {
++	widget->setWindowFlag(Qt::WindowStaysOnTopHint, true);
++	if (!canFocus) {
++		widget->setAttribute(Qt::WA_ShowWithoutActivating);
++	}
++	widget->show();
++}
++
++inline void IgnoreAllActivation(not_null<QWidget*> widget) {
++	widget->setAttribute(Qt::WA_ShowWithoutActivating);
++}
++
++inline void ClearTransientParent(not_null<QWidget*> widget) {
++	if (const auto window = widget->windowHandle()) {
++		window->setTransientParent(nullptr);
++	}
++}
++
++inline void AcceptAllMouseInput(not_null<QWidget*> widget) {
++}
++
++inline void DisableSystemWindowResize(not_null<QWidget*> widget, QSize ratio) {
++}
++
++inline std::optional<bool> IsOverlapped(
++		not_null<QWidget*> widget,
++		const QRect &rect) {
++	return std::nullopt;
++}
++
++inline constexpr bool UseMainQueueGeneric() {
++	return true;
++}
++
++inline void DrainMainQueue() {
++}
++
++inline bool WindowMarginsSupported() {
++	return false;
++}
++
++inline void SetWindowMargins(not_null<QWidget*> widget, const QMargins &margins) {
++}
++
++inline void ShowWindowMenu(not_null<QWidget*> widget, const QPoint &point) {
++}
++
++inline void FixPopupMenuNativeEmojiPopup(not_null<PopupMenu*> menu) {
++}
++
++} // namespace Platform
++} // namespace Ui
+diff --git a/ui/platform/android/ui_window_android.cpp b/ui/platform/android/ui_window_android.cpp
+new file mode 100644
+index 0000000..3ac24d2
+--- /dev/null
++++ b/ui/platform/android/ui_window_android.cpp
+@@ -0,0 +1,27 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "ui/platform/ui_platform_window.h"
++
++namespace Ui {
++namespace Platform {
++
++std::unique_ptr<BasicWindowHelper> CreateSpecialWindowHelper(
++		not_null<RpWidget*> window) {
++	return nullptr;
++}
++
++bool NativeWindowFrameSupported() {
++	return false;
++}
++
++rpl::producer<FullScreenEvent> FullScreenEvents(
++		not_null<RpWidget*> window) {
++	return rpl::never<FullScreenEvent>();
++}
++
++} // namespace Platform
++} // namespace Ui
+diff --git a/ui/platform/android/ui_window_title_android.cpp b/ui/platform/android/ui_window_title_android.cpp
+new file mode 100644
+index 0000000..0ff90c4
+--- /dev/null
++++ b/ui/platform/android/ui_window_title_android.cpp
+@@ -0,0 +1,18 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "ui/platform/ui_platform_window_title.h"
++
++namespace Ui {
++namespace Platform {
++
++std::shared_ptr<TitleControlsLayout> TitleControlsLayout::Create() {
++	return std::shared_ptr<TitleControlsLayout>(
++		new TitleControlsLayout(TitleLayout()));
++}
++
++} // namespace Platform
++} // namespace Ui

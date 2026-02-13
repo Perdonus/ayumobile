@@ -108,6 +108,12 @@ Flatpak: https://github.com/0FL01/AyuGramDesktop-flatpak
 
 Or follow the [official guide](https://github.com/AyuGram/AyuGramDesktop/blob/dev/docs/building-linux.md).
 
+### Android
+
+Native Android APK target (Qt/C++) is available in this repository.
+
+Build instructions: [docs/building-android.md](docs/building-android.md)
+
 ### Remarks for Windows
 
 Make sure you have these components installed with VS Build Tools:
@@ -136,7 +142,6 @@ Enjoy using **AyuGram**? Consider sending us a tip!
 - [JSON for Modern C++](https://github.com/nlohmann/json)
 - [SQLite](https://github.com/sqlite/sqlite)
 - [sqlite_orm](https://github.com/fnc12/sqlite_orm)
-- [androidx sources](https://github.com/androidx/androidx)
 
 ### Icons
 

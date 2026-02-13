@@ -257,18 +257,37 @@ if (NOT MSVC)
     )
 endif()
 
-remove_target_sources(lib_tgcalls ${tgcalls_loc}
-    platform/android/AndroidContext.cpp
-    platform/android/AndroidContext.h
-    platform/android/AndroidInterface.cpp
-    platform/android/AndroidInterface.h
-    platform/android/VideoCameraCapturer.cpp
-    platform/android/VideoCameraCapturer.h
-    platform/android/VideoCapturerInterfaceImpl.cpp
-    platform/android/VideoCapturerInterfaceImpl.h
-    reference/InstanceImplReference.cpp
-    reference/InstanceImplReference.h
-)
+if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
+    file(GLOB_RECURSE tgcalls_darwin_sources RELATIVE ${tgcalls_loc}
+        ${tgcalls_loc}/platform/darwin/*
+    )
+    remove_target_sources(lib_tgcalls ${tgcalls_loc}
+        ${tgcalls_darwin_sources}
+        platform/android/AndroidContext.cpp
+        platform/android/AndroidContext.h
+        platform/android/AndroidInterface.cpp
+        platform/android/AndroidInterface.h
+        platform/android/VideoCameraCapturer.cpp
+        platform/android/VideoCameraCapturer.h
+        platform/android/VideoCapturerInterfaceImpl.cpp
+        platform/android/VideoCapturerInterfaceImpl.h
+        reference/InstanceImplReference.cpp
+        reference/InstanceImplReference.h
+    )
+else()
+    remove_target_sources(lib_tgcalls ${tgcalls_loc}
+        platform/android/AndroidContext.cpp
+        platform/android/AndroidContext.h
+        platform/android/AndroidInterface.cpp
+        platform/android/AndroidInterface.h
+        platform/android/VideoCameraCapturer.cpp
+        platform/android/VideoCameraCapturer.h
+        platform/android/VideoCapturerInterfaceImpl.cpp
+        platform/android/VideoCapturerInterfaceImpl.h
+        reference/InstanceImplReference.cpp
+        reference/InstanceImplReference.h
+    )
+endif()
 
 target_include_directories(lib_tgcalls
 PUBLIC

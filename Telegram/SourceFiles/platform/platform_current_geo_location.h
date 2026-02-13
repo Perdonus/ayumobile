@@ -21,3 +21,15 @@ void ResolveLocationAddress(
 	Fn<void(Core::GeoAddress)> callback);
 
 } // namespace Platform
+
+// Platform dependent implementations.
+
+#if defined Q_OS_WINRT || defined Q_OS_WIN
+#include "platform/win/current_geo_location_win.h"
+#elif defined Q_OS_MAC // Q_OS_WINRT || Q_OS_WIN
+#include "platform/mac/current_geo_location_mac.h"
+#elif defined Q_OS_ANDROID // Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
+#include "platform/android/current_geo_location_android.h"
+#else // Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC
+#include "platform/linux/current_geo_location_linux.h"
+#endif // else for Q_OS_WINRT || Q_OS_WIN || Q_OS_MAC

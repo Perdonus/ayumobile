@@ -1,0 +1,32 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 38ea4d1..e3a5853 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -247,6 +247,27 @@ if (DESKTOP_APP_DISABLE_X11_INTEGRATION)
+     )
+ endif()
+ 
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    file(GLOB linux_platform_sources RELATIVE ${src_loc}
++        base/platform/linux/*.cpp
++        base/platform/linux/*.h
++    )
++    file(GLOB mac_platform_sources RELATIVE ${src_loc}
++        base/platform/mac/*.cpp
++        base/platform/mac/*.mm
++        base/platform/mac/*.h
++    )
++    file(GLOB_RECURSE win_platform_sources RELATIVE ${src_loc}
++        base/platform/win/*
++    )
++    remove_target_sources(lib_base ${src_loc}
++        ${linux_platform_sources}
++        ${mac_platform_sources}
++        ${win_platform_sources}
++        base/file_lock_win.cpp
++    )
++endif()
++
+ target_include_directories(lib_base
+ PUBLIC
+     ${src_loc}

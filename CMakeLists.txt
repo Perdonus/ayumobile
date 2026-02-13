@@ -47,10 +47,21 @@ include(cmake/target_prepare_qrc.cmake)
 include(cmake/options.cmake)
 include(cmake/external/qt/package.cmake)
 
+if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
+    set(add_cld3_library 0)
+    set(add_hunspell_library 1)
+endif()
+
 set(desktop_app_skip_libs
+    ada
     glibmm
     variant
 )
+if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
+    list(APPEND desktop_app_skip_libs
+        boost
+    )
+endif()
 
 add_subdirectory(cmake)
 add_subdirectory(Telegram)

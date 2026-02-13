@@ -62,6 +62,13 @@ set(dependent_style_files
 generate_styles(td_ui ${src_loc} "${style_files}" "${dependent_style_files}")
 
 target_precompile_headers(td_ui PRIVATE ${src_loc}/ui/ui_pch.h)
+if (ANDROID)
+    set_source_files_properties(
+        ${src_loc}/ui/boxes/boost_box.cpp
+    PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+    )
+endif()
 nice_target_sources(td_ui ${src_loc}
 PRIVATE
     ${style_files}
@@ -243,6 +250,8 @@ PRIVATE
     payments/ui/payments_reaction_box.cpp
     payments/ui/payments_reaction_box.h
 
+    platform/android/current_geo_location_android.h
+    platform/android/text_recognition_android.h
     platform/linux/current_geo_location_linux.cpp
     platform/linux/current_geo_location_linux.h
     platform/linux/text_recognition_linux.h
@@ -565,6 +574,35 @@ else()
     )
 endif()
 
+if (ANDROID)
+    remove_target_sources(td_ui ${src_loc}
+        platform/linux/current_geo_location_linux.cpp
+        platform/mac/file_bookmark_mac.mm
+        platform/mac/current_geo_location_mac.mm
+        platform/mac/text_recognition_mac.mm
+        platform/win/current_geo_location_win.cpp
+    )
+elseif (WIN32)
+    remove_target_sources(td_ui ${src_loc}
+        platform/linux/current_geo_location_linux.cpp
+        platform/mac/file_bookmark_mac.mm
+        platform/mac/current_geo_location_mac.mm
+        platform/mac/text_recognition_mac.mm
+    )
+elseif (APPLE)
+    remove_target_sources(td_ui ${src_loc}
+        platform/linux/current_geo_location_linux.cpp
+        platform/win/current_geo_location_win.cpp
+    )
+else()
+    remove_target_sources(td_ui ${src_loc}
+        platform/mac/file_bookmark_mac.mm
+        platform/mac/current_geo_location_mac.mm
+        platform/mac/text_recognition_mac.mm
+        platform/win/current_geo_location_win.cpp
+    )
+endif()
+
 target_include_directories(td_ui
 PUBLIC
     ${src_loc}
@@ -585,3 +623,11 @@ PRIVATE
     desktop-app::external_kcoreaddons
     desktop-app::external_webrtc
 )
+
+if (ANDROID)
+    target_compile_options(td_ui
+    PRIVATE
+        -O0
+        -g0
+    )
+endif()

@@ -1,0 +1,104 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 23db91b..38ea05d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,8 @@ if (APPLE)
+ endif()
+ 
+ set(use_cld3 0)
+-if (LINUX OR DESKTOP_APP_USE_CLD3)
++if ((LINUX OR DESKTOP_APP_USE_CLD3)
++    AND NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
+     set(use_cld3 1)
+ endif()
+ 
+@@ -43,6 +44,8 @@ PRIVATE
+     spellcheck/platform/linux/linux_enchant.h
+     spellcheck/platform/linux/spellcheck_linux.cpp
+     spellcheck/platform/linux/spellcheck_linux.h
++    spellcheck/platform/android/language_android.cpp
++    spellcheck/platform/android/language_android.h
+     spellcheck/platform/mac/language_mac.h
+     spellcheck/platform/mac/language_mac.mm
+     spellcheck/platform/mac/spellcheck_mac.h
+@@ -111,6 +114,17 @@ else()
+     )
+ endif()
+ 
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    remove_target_sources(lib_spellcheck ${src_loc}
++        spellcheck/platform/linux/language_linux.cpp
++        spellcheck/platform/linux/language_linux.h
++        spellcheck/platform/mac/language_mac.h
++        spellcheck/platform/mac/language_mac.mm
++        spellcheck/platform/win/language_win.cpp
++        spellcheck/platform/win/language_win.h
++    )
++endif()
++
+ # We should support both types of spellchecker for Windows.
+ if (WIN32 OR NOT system_spellchecker)
+     target_link_libraries(lib_spellcheck PRIVATE desktop-app::external_hunspell)
+@@ -132,13 +146,21 @@ PRIVATE
+     desktop-app::lib_base
+     desktop-app::lib_rpl
+     desktop-app::lib_crl
+-    desktop-app::lib_prisma
+     desktop-app::external_qt
+     desktop-app::external_ranges
+     desktop-app::external_gsl
+     desktop-app::external_xxhash
+ )
+ 
++if (TARGET desktop-app::lib_prisma)
++    target_link_libraries(lib_spellcheck PRIVATE desktop-app::lib_prisma)
++else()
++    remove_target_sources(lib_spellcheck ${src_loc}
++        spellcheck/spellcheck_highlight_syntax.cpp
++        spellcheck/spellcheck_highlight_syntax.h
++    )
++endif()
++
+ if (LINUX AND use_enchant)
+     find_package(PkgConfig REQUIRED)
+ 
+diff --git a/spellcheck/platform/android/language_android.cpp b/spellcheck/platform/android/language_android.cpp
+new file mode 100644
+index 0000000..14abb9f
+--- /dev/null
++++ b/spellcheck/platform/android/language_android.cpp
+@@ -0,0 +1,15 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "spellcheck/platform/android/language_android.h"
++
++namespace Platform::Language {
++
++LanguageId Recognize(QStringView text) {
++	return {};
++}
++
++} // namespace Platform::Language
+diff --git a/spellcheck/platform/android/language_android.h b/spellcheck/platform/android/language_android.h
+new file mode 100644
+index 0000000..6b66923
+--- /dev/null
++++ b/spellcheck/platform/android/language_android.h
+@@ -0,0 +1,13 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#pragma once
++
++#include "spellcheck/platform/platform_language.h"
++
++namespace Platform::Language {
++
++} // namespace Platform::Language

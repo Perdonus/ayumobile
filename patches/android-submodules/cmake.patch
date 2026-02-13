@@ -1,0 +1,262 @@
+diff --git a/external/openal/CMakeLists.txt b/external/openal/CMakeLists.txt
+index a054a58..0d7d8bf 100644
+--- a/external/openal/CMakeLists.txt
++++ b/external/openal/CMakeLists.txt
+@@ -8,6 +8,15 @@ add_library(external_openal INTERFACE IMPORTED GLOBAL)
+ add_library(desktop-app::external_openal ALIAS external_openal)
+ 
+ if (DESKTOP_APP_USE_PACKAGED OR LINUX)
++    if (ANDROID AND NOT TARGET OpenSL::OpenSLES)
++        find_library(OPENSL_ES_LIBRARY OpenSLES)
++        if (OPENSL_ES_LIBRARY)
++            add_library(OpenSL::OpenSLES UNKNOWN IMPORTED GLOBAL)
++            set_target_properties(OpenSL::OpenSLES PROPERTIES
++                IMPORTED_LOCATION "${OPENSL_ES_LIBRARY}"
++            )
++        endif()
++    endif()
+     find_package(OpenAL REQUIRED CONFIG)
+     target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
+     return()
+diff --git a/external/xxhash/CMakeLists.txt b/external/xxhash/CMakeLists.txt
+index 9c2d02b..1845741 100644
+--- a/external/xxhash/CMakeLists.txt
++++ b/external/xxhash/CMakeLists.txt
+@@ -8,10 +8,12 @@ add_library(external_xxhash INTERFACE IMPORTED GLOBAL)
+ add_library(desktop-app::external_xxhash ALIAS external_xxhash)
+ 
+ if (DESKTOP_APP_USE_PACKAGED)
+-    find_package(xxHash QUIET)
+-    if (xxHash_FOUND)
+-        target_link_libraries(external_xxhash INTERFACE xxHash::xxhash)
+-        return()
++    if (NOT ANDROID)
++        find_package(xxHash QUIET)
++        if (xxHash_FOUND)
++            target_link_libraries(external_xxhash INTERFACE xxHash::xxhash)
++            return()
++        endif()
+     endif()
+ 
+     find_package(PkgConfig)
+diff --git a/init_target.cmake b/init_target.cmake
+index 9d4468e..6bc762e 100644
+--- a/init_target.cmake
++++ b/init_target.cmake
+@@ -29,7 +29,7 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
+     if (DESKTOP_APP_USE_PACKAGED)
+         get_target_property(target_type ${target_name} TYPE)
+         if (QT_FOUND AND target_type STREQUAL "EXECUTABLE")
+-            if (QT_VERSION VERSION_GREATER_EQUAL 6.2)
++            if (QT_VERSION VERSION_GREATER_EQUAL 6.2 AND NOT ANDROID)
+                 cmake_language(EVAL CODE "cmake_language(DEFER CALL qt_finalize_target ${target_name})")
+             endif()
+             if (LINUX)
+@@ -43,7 +43,7 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
+             endif()
+         endif()
+     endif()
+-    if (DESKTOP_APP_SPECIAL_TARGET)
++    if (DESKTOP_APP_SPECIAL_TARGET AND NOT ANDROID)
+         if (MSVC)
+             set_property(TARGET ${target_name} APPEND_STRING PROPERTY STATIC_LIBRARY_OPTIONS "$<$<NOT:$<CONFIG:Debug>>:/LTCG>")
+         elseif (CMAKE_GENERATOR STREQUAL Xcode)
+diff --git a/nice_target_sources.cmake b/nice_target_sources.cmake
+index aa24595..7698b32 100644
+--- a/nice_target_sources.cmake
++++ b/nice_target_sources.cmake
+@@ -9,6 +9,7 @@ function(nice_target_sources target_name src_loc)
+     set(private_sources "")
+     set(public_sources "")
+     set(interface_sources "")
++    set(not_android_sources "")
+     set(not_win_sources "")
+     set(not_mac_sources "")
+     set(not_linux_sources "")
+@@ -18,14 +19,20 @@ function(nice_target_sources target_name src_loc)
+         else()
+             set(full_name ${src_loc}/${entry})
+             if (${entry} MATCHES "(^|/)win/" OR ${entry} MATCHES "(^|/)winrc/" OR ${entry} MATCHES "(^|/)windows/" OR ${entry} MATCHES "[_\\/]win\\.")
++                list(APPEND not_android_sources ${full_name})
+                 list(APPEND not_mac_sources ${full_name})
+                 list(APPEND not_linux_sources ${full_name})
+             elseif (${entry} MATCHES "(^|/)mac/" OR ${entry} MATCHES "(^|/)darwin/" OR ${entry} MATCHES "(^|/)osx/" OR ${entry} MATCHES "[_\\/]mac\\." OR ${entry} MATCHES "[_\\/]darwin\\." OR ${entry} MATCHES "[_\\/]osx\\.")
++                list(APPEND not_android_sources ${full_name})
+                 list(APPEND not_win_sources ${full_name})
+                 list(APPEND not_linux_sources ${full_name})
+             elseif (${entry} MATCHES "(^|/)linux/" OR ${entry} MATCHES "[_\\/]linux\\.")
+                 list(APPEND not_win_sources ${full_name})
+                 list(APPEND not_mac_sources ${full_name})
++            elseif (${entry} MATCHES "(^|/)android/" OR ${entry} MATCHES "[_\\/]android\\.")
++                list(APPEND not_win_sources ${full_name})
++                list(APPEND not_mac_sources ${full_name})
++                list(APPEND not_linux_sources ${full_name})
+             elseif (${entry} MATCHES "(^|/)posix/" OR ${entry} MATCHES "[_\\/]posix\\.")
+                 list(APPEND not_win_sources ${full_name})
+             endif()
+@@ -55,7 +62,10 @@ function(nice_target_sources target_name src_loc)
+     if (NOT "${interface_sources}" STREQUAL "")
+         target_sources(${target_name} INTERFACE ${interface_sources})
+     endif()
+-    if (WIN32)
++    if (ANDROID)
++        set_source_files_properties(${not_android_sources} PROPERTIES HEADER_FILE_ONLY TRUE)
++        set_source_files_properties(${not_android_sources} PROPERTIES SKIP_AUTOGEN TRUE)
++    elseif (WIN32)
+         set_source_files_properties(${not_win_sources} PROPERTIES HEADER_FILE_ONLY TRUE)
+         set_source_files_properties(${not_win_sources} PROPERTIES SKIP_AUTOGEN TRUE)
+     elseif (APPLE)
+diff --git a/options.cmake b/options.cmake
+index 775c8e6..126be0a 100644
+--- a/options.cmake
++++ b/options.cmake
+@@ -22,10 +22,17 @@ if (DESKTOP_APP_DISABLE_X11_INTEGRATION)
+     )
+ endif()
+ 
++set(desktop_app_is_android 0)
++if (CMAKE_SYSTEM_NAME STREQUAL "Android")
++    set(desktop_app_is_android 1)
++endif()
++
+ if (WIN32)
+     include(cmake/options_win.cmake)
+ elseif (APPLE)
+     include(cmake/options_mac.cmake)
++elseif (desktop_app_is_android)
++    include(cmake/options_android.cmake)
+ elseif (LINUX)
+     include(cmake/options_linux.cmake)
+ else()
+diff --git a/validate_special_target.cmake b/validate_special_target.cmake
+index 57e0950..16f7674 100644
+--- a/validate_special_target.cmake
++++ b/validate_special_target.cmake
+@@ -21,6 +21,19 @@ function(report_bad_special_target)
+     endif()
+ endfunction()
+ 
++set(desktop_app_is_android 0)
++if (CMAKE_SYSTEM_NAME STREQUAL "Android")
++    set(desktop_app_is_android 1)
++endif()
++if (DEFINED CMAKE_TOOLCHAIN_FILE
++    AND CMAKE_TOOLCHAIN_FILE MATCHES "android\\.toolchain\\.cmake")
++    set(desktop_app_is_android 1)
++endif()
++
++if (desktop_app_is_android AND DESKTOP_APP_SPECIAL_TARGET STREQUAL "")
++    set(DESKTOP_APP_SPECIAL_TARGET "android" CACHE STRING "Use special platform target, like 'macstore' for Mac App Store." FORCE)
++endif()
++
+ if (APPLE AND NOT DESKTOP_APP_USE_PACKAGED)
+     set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "Minimum macOS deployment version")
+     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "Target macOS architectures")
+@@ -30,6 +43,8 @@ if (NOT DEFINED MSVC)
+     set(MSVC 0)
+ endif()
+ 
++set(LINUX 0)
++
+ if (WIN32)
+     if (NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp"
+         AND NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp64"
+@@ -44,6 +59,10 @@ elseif (APPLE)
+         AND NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "mac")
+         report_bad_special_target()
+     endif()
++elseif (desktop_app_is_android)
++    if (NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++        report_bad_special_target()
++    endif()
+ else()
+     set(LINUX 1)
+     if (NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "linux")
+diff --git a/variables.cmake b/variables.cmake
+index 8c496c5..06a6053 100644
+--- a/variables.cmake
++++ b/variables.cmake
+@@ -10,13 +10,17 @@ set(no_special_target 0)
+ if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "")
+     set(no_special_target 1)
+ endif()
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    set(no_special_target 1)
++endif()
+ 
+ set(disable_autoupdate 0)
+ if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
+     OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp"
+     OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp64"
+     OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwparm"
+-    OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "macstore")
++    OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "macstore"
++    OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
+     set(disable_autoupdate 1)
+ endif()
+ 
+@@ -26,6 +30,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STR
+ option(DESKTOP_APP_TEST_APPS "Build test apps, development only." OFF)
+ option(DESKTOP_APP_LOTTIE_DISABLE_RECOLORING "Disable recoloring of lottie animations." OFF)
+ option(DESKTOP_APP_LOTTIE_USE_CACHE "Use caching in lottie animations." ON)
++option(DESKTOP_APP_FORCE_DISABLE_CLD3 "Force-disable bundled cld3 dependency." OFF)
+ cmake_dependent_option(DESKTOP_APP_DISABLE_X11_INTEGRATION "Disable all code for X11 integration." OFF LINUX ON)
+ cmake_dependent_option(DESKTOP_APP_USE_ALLOCATION_TRACER "Use simple allocation tracer." OFF LINUX OFF)
+ option(DESKTOP_APP_USE_PACKAGED_FONTS "Use preinstalled fonts instead of bundled patched ones." OFF)
+@@ -38,6 +43,10 @@ option(DESKTOP_APP_ASAN "Enable address sanitizer" OFF)
+ cmake_dependent_option(DESKTOP_APP_USE_ENCHANT "Use Enchant instead of bundled Hunspell." OFF LINUX OFF)
+ cmake_dependent_option(DESKTOP_APP_USE_CLD3 "Disable system text language recognition and use bundled cld3 only." OFF APPLE ON)
+ 
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    set(DESKTOP_APP_USE_CLD3 OFF CACHE BOOL "Disable system text language recognition and use bundled cld3 only." FORCE)
++endif()
++
+ if (APPLE)
+     set(DESKTOP_APP_MAC_ARCH "" CACHE STRING "Target macOS arch.")
+ else()
+@@ -55,6 +64,9 @@ set(add_cld3_library 0)
+ if (LINUX OR DESKTOP_APP_USE_CLD3)
+     set(add_cld3_library 1)
+ endif()
++if (DESKTOP_APP_FORCE_DISABLE_CLD3)
++    set(add_cld3_library 0)
++endif()
+ 
+ set(build_macstore 0)
+ set(build_winstore 0) # x86 or x64 or arm
+diff --git a/options_android.cmake b/options_android.cmake
+new file mode 100644
+index 0000000..082e7f4
+--- /dev/null
++++ b/options_android.cmake
+@@ -0,0 +1,30 @@
++# This file is part of Desktop App Toolkit,
++# a set of libraries for developing nice desktop applications.
++#
++# For license and copyright information please follow this link:
++# https://github.com/desktop-app/legal/blob/master/LEGAL
++
++target_compile_options(common_options
++INTERFACE
++    -fPIC
++    -pipe
++    $<$<NOT:$<CONFIG:Debug>>:-fno-strict-aliasing>
++)
++
++target_compile_options_if_exists(common_options
++INTERFACE
++    -Wall
++    -Wextra
++    -Wno-unused-parameter
++    -Wno-switch
++    -Wno-maybe-uninitialized
++    -Wno-missing-field-initializers
++    -Wno-sign-compare
++    -Wno-deprecated
++)
++
++target_link_libraries(common_options
++INTERFACE
++    log
++    android
++)

@@ -1,0 +1,21 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ac44ea3..97e47b8 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -41,6 +41,16 @@ PRIVATE
+     storage/storage_pch.h
+ )
+ 
++if (WIN32)
++    remove_target_sources(lib_storage ${src_loc}
++        storage/storage_clear_legacy_posix.cpp
++    )
++else()
++    remove_target_sources(lib_storage ${src_loc}
++        storage/storage_clear_legacy_win.cpp
++    )
++endif()
++
+ target_include_directories(lib_storage
+ PUBLIC
+     ${src_loc}
