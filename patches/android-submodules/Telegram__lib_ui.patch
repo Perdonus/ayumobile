@@ -257,3 +257,42 @@ index 0000000..0ff90c4
 +
 +} // namespace Platform
 +} // namespace Ui
+diff --git a/cmake/generate_emoji.cmake b/cmake/generate_emoji.cmake
+index 9262e78..683408f 100644
+--- a/cmake/generate_emoji.cmake
++++ b/cmake/generate_emoji.cmake
+@@ -20,7 +20,7 @@ function(generate_emoji target_name emoji_map suggestions_json)
+     BYPRODUCTS
+         ${gen_files}
+     COMMAND
+-        codegen_emoji
++        $<TARGET_FILE:codegen_emoji>
+         -o${gen_dst}
+         ${gen_src}
+     COMMENT "Generating emoji (${target_name})"
+diff --git a/cmake/generate_palette.cmake b/cmake/generate_palette.cmake
+index e3f7043..5413c0c 100644
+--- a/cmake/generate_palette.cmake
++++ b/cmake/generate_palette.cmake
+@@ -15,7 +15,7 @@ function(generate_palette target_name palette_file)
+     BYPRODUCTS
+         ${gen_files}
+     COMMAND
+-        codegen_style
++        $<TARGET_FILE:codegen_style>
+         -I${gen_dst}
+         -o${gen_dst}/styles
+         -t${gen_dst}/styles/palette
+diff --git a/cmake/generate_styles.cmake b/cmake/generate_styles.cmake
+index 84617ea..44051c4 100644
+--- a/cmake/generate_styles.cmake
++++ b/cmake/generate_styles.cmake
+@@ -22,7 +22,7 @@ function(generate_styles target_name src_loc style_files dependent_style_files)
+     BYPRODUCTS
+         ${gen_files}
+     COMMAND
+-        codegen_style
++        $<TARGET_FILE:codegen_style>
+         -I${src_loc}
+         -I${submodules_loc}/lib_ui
+         -I${submodules_loc}/Resources
