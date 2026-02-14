@@ -314,8 +314,8 @@ build_tg_owt() {
   fi
 
   rm -rf "${SRC_ROOT}/tg_owt/out/android-arm64"
-  PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig" \
-  PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig" \
+  PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${FFMPEG_PREFIX}/lib/pkgconfig" \
+  PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig:${FFMPEG_PREFIX}/lib/pkgconfig" \
   cmake -S "${SRC_ROOT}/tg_owt" -B "${SRC_ROOT}/tg_owt/out/android-arm64" -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" \
@@ -323,8 +323,8 @@ build_tg_owt() {
     -DANDROID_PLATFORM="${ANDROID_API}" \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-    -DCMAKE_PREFIX_PATH="${PREFIX}" \
-    -DCMAKE_FIND_ROOT_PATH="${PREFIX}" \
+    -DCMAKE_PREFIX_PATH="${PREFIX};${FFMPEG_PREFIX}" \
+    -DCMAKE_FIND_ROOT_PATH="${PREFIX};${FFMPEG_PREFIX}" \
     -DTG_OWT_USE_X11=OFF \
     -DTG_OWT_USE_PIPEWIRE=OFF \
     -DJPEG_INCLUDE_DIR="${PREFIX}/include" \
