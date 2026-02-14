@@ -264,15 +264,21 @@ build_tde2e() {
 
   rm -rf "${SRC_ROOT}/tde2e-td/out-host-gen" "${SRC_ROOT}/tde2e-td/out-android-arm64"
 
-  cmake -S "${SRC_ROOT}/tde2e-td" -B "${SRC_ROOT}/tde2e-td/out-host-gen" -GNinja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DTD_E2E_ONLY=ON \
-    -DTD_ENABLE_DOTNET=OFF \
-    -DTD_ENABLE_JNI=OFF \
-    -DTD_INSTALL_STATIC_LIBRARIES=ON \
-    -DTDE2E_ENABLE_INSTALL=ON \
-    -DTDE2E_INSTALL_INCLUDES=ON
-  cmake --build "${SRC_ROOT}/tde2e-td/out-host-gen" --target prepare_cross_compiling -j"${NPROC}"
+  env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR \
+    cmake -S "${SRC_ROOT}/tde2e-td" -B "${SRC_ROOT}/tde2e-td/out-host-gen" -GNinja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DOPENSSL_ROOT_DIR="/usr" \
+      -DOPENSSL_INCLUDE_DIR="/usr/include" \
+      -DOPENSSL_SSL_LIBRARY="/usr/lib/x86_64-linux-gnu/libssl.so" \
+      -DOPENSSL_CRYPTO_LIBRARY="/usr/lib/x86_64-linux-gnu/libcrypto.so" \
+      -DTD_E2E_ONLY=ON \
+      -DTD_ENABLE_DOTNET=OFF \
+      -DTD_ENABLE_JNI=OFF \
+      -DTD_INSTALL_STATIC_LIBRARIES=ON \
+      -DTDE2E_ENABLE_INSTALL=ON \
+      -DTDE2E_INSTALL_INCLUDES=ON
+  env -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR \
+    cmake --build "${SRC_ROOT}/tde2e-td/out-host-gen" --target prepare_cross_compiling -j"${NPROC}"
 
   cmake -S "${SRC_ROOT}/tde2e-td" -B "${SRC_ROOT}/tde2e-td/out-android-arm64" -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
