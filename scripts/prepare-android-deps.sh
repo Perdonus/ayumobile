@@ -144,7 +144,7 @@ build_openh264() {
   make -C "${SRC_ROOT}/openh264" \
     OS=android ARCH=arm64 \
     NDKROOT="${ANDROID_NDK_ROOT}" TARGET="android-${ANDROID_API}" \
-    -j"${NPROC}"
+    -j"${NPROC}" libraries
   make -C "${SRC_ROOT}/openh264" \
     OS=android ARCH=arm64 \
     NDKROOT="${ANDROID_NDK_ROOT}" TARGET="android-${ANDROID_API}" \
