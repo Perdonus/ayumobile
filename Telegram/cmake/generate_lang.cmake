@@ -14,13 +14,18 @@ function(generate_lang target_name lang_file)
         ${gen_dst}/lang_auto.h
     )
 
+    set(codegen_lang_command "$<TARGET_FILE:codegen_lang>")
+    if (TDESKTOP_CODEGEN_LANG)
+        set(codegen_lang_command "${TDESKTOP_CODEGEN_LANG}")
+    endif()
+
     add_custom_command(
     OUTPUT
         ${gen_timestamp}
     BYPRODUCTS
         ${gen_files}
     COMMAND
-        $<TARGET_FILE:codegen_lang>
+        ${codegen_lang_command}
         -o${gen_dst}
         ${lang_file}
     COMMENT "Generating lang (${target_name})"
