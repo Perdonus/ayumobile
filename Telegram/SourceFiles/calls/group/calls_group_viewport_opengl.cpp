@@ -19,6 +19,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_calls.h"
 #include "styles/style_media_view.h"
 
+#include <QtCore/QByteArray>
+#include <cstring>
 #include <QOpenGLShader>
 
 namespace Calls::Group {
@@ -39,6 +41,30 @@ constexpr auto kQuads = 9;
 constexpr auto kQuadVertices = kQuads * 4;
 constexpr auto kQuadValues = kQuadVertices * 4;
 constexpr auto kValues = kQuadValues + 8; // Blur texture coordinates.
+
+[[nodiscard]] int BytesPerPixelFromFormat(GLint format) {
+	switch (format) {
+	case GL_RGBA: return 4;
+	case GL_RGB: return 3;
+	default: return 1;
+	}
+}
+
+[[nodiscard]] GLint NoiseTextureInternalFormat() {
+#if defined(GL_R8) && defined(GL_RED)
+	return GL_R8;
+#else
+	return GL_ALPHA;
+#endif
+}
+
+[[nodiscard]] GLint NoiseTextureFormat() {
+#if defined(GL_R8) && defined(GL_RED)
+	return GL_RED;
+#else
+	return GL_ALPHA;
+#endif
+}
 
 [[nodiscard]] ShaderPart FragmentBlurTexture(
 		bool vertical,
@@ -1047,7 +1073,27 @@ void Viewport::RendererGL::uploadTexture(
 		QSize hasSize,
 		int stride,
 		const void *data) const {
+	const auto components = BytesPerPixelFromFormat(format);
+	const auto width = size.width();
+	const auto height = size.height();
+	auto uploadData = data;
+	QByteArray packed;
+#if defined(GL_UNPACK_ROW_LENGTH)
 	f.glPixelStorei(GL_UNPACK_ROW_LENGTH, stride);
+#else
+	if (stride != width) {
+		const auto sourceBytesPerLine = stride * components;
+		const auto targetBytesPerLine = width * components;
+		packed.resize(targetBytesPerLine * height);
+		auto source = static_cast<const uchar*>(data);
+		auto target = reinterpret_cast<uchar*>(packed.data());
+		for (auto row = 0; row != height; ++row) {
+			std::memcpy(target + (row * targetBytesPerLine), source, targetBytesPerLine);
+			source += sourceBytesPerLine;
+		}
+		uploadData = packed.constData();
+	}
+#endif
 	if (hasSize != size) {
 		f.glTexImage2D(
 			GL_TEXTURE_2D,
@@ -1058,7 +1104,7 @@ void Viewport::RendererGL::uploadTexture(
 			0,
 			format,
 			GL_UNSIGNED_BYTE,
-			data);
+			uploadData);
 	} else {
 		f.glTexSubImage2D(
 			GL_TEXTURE_2D,
@@ -1069,9 +1115,11 @@ void Viewport::RendererGL::uploadTexture(
 			size.height(),
 			format,
 			GL_UNSIGNED_BYTE,
-			data);
+			uploadData);
 	}
+#if defined(GL_UNPACK_ROW_LENGTH)
 	f.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
 }
 
 void Viewport::RendererGL::drawDownscalePass(
@@ -1378,11 +1426,11 @@ void Viewport::RendererGL::validateNoiseTexture(
 	f.glTexImage2D(
 		GL_TEXTURE_2D,
 		0,
-		GL_R8,
+		NoiseTextureInternalFormat(),
 		kNoiseTextureSize,
 		kNoiseTextureSize,
 		0,
-		GL_RED,
+		NoiseTextureFormat(),
 		GL_UNSIGNED_BYTE,
 		nullptr);
 	if (f.glGetError() != GL_NO_ERROR) {
