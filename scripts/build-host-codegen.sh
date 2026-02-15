@@ -8,11 +8,26 @@ if [[ -z "${QT_HOST_PATH:-}" ]]; then
   exit 1
 fi
 
+ensure_opengl_dev_packages() {
+  if [[ -f /usr/include/GL/gl.h ]] && [[ -f /usr/lib/x86_64-linux-gnu/libOpenGL.so ]]; then
+    return
+  fi
+
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update
+  apt-get install -y --no-install-recommends \
+    libgl1-mesa-dev \
+    libopengl-dev \
+    libglx-dev \
+    mesa-common-dev
+}
+
 HOST_CODEGEN_DIR="${HOST_CODEGEN_DIR:-/content/host-codegen}"
 HOST_CODEGEN_SRC_DIR="${HOST_CODEGEN_DIR}/src"
 HOST_CODEGEN_BUILD_DIR="${HOST_CODEGEN_DIR}/build"
 HOST_CODEGEN_BIN_DIR="${HOST_CODEGEN_DIR}/bin"
 
+ensure_opengl_dev_packages
 mkdir -p "${HOST_CODEGEN_SRC_DIR}" "${HOST_CODEGEN_BUILD_DIR}" "${HOST_CODEGEN_BIN_DIR}"
 
 cat > "${HOST_CODEGEN_SRC_DIR}/CMakeLists.txt" <<'CMAKE_EOF'
