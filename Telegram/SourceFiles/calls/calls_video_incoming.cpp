@@ -16,6 +16,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "webrtc/webrtc_video_track.h"
 #include "styles/style_calls.h"
 
+#include <QtCore/QByteArray>
+#include <cstring>
 #include <QOpenGLShader>
 #include <QOpenGLBuffer>
 
@@ -25,6 +27,14 @@ namespace {
 constexpr auto kBottomShadowAlphaMax = 74;
 
 using namespace Ui::GL;
+
+[[nodiscard]] int BytesPerPixelFromFormat(GLint format) {
+	switch (format) {
+	case GL_RGBA: return 4;
+	case GL_RGB: return 3;
+	default: return 1;
+	}
+}
 
 [[nodiscard]] ShaderPart FragmentBottomShadow() {
 	return {
@@ -397,7 +407,27 @@ void Panel::Incoming::RendererGL::uploadTexture(
 		QSize hasSize,
 		int stride,
 		const void *data) const {
+	const auto components = BytesPerPixelFromFormat(format);
+	const auto width = size.width();
+	const auto height = size.height();
+	auto uploadData = data;
+	QByteArray packed;
+#if defined(GL_UNPACK_ROW_LENGTH)
 	f.glPixelStorei(GL_UNPACK_ROW_LENGTH, stride);
+#else
+	if (stride != width) {
+		const auto sourceBytesPerLine = stride * components;
+		const auto targetBytesPerLine = width * components;
+		packed.resize(targetBytesPerLine * height);
+		auto source = static_cast<const uchar*>(data);
+		auto target = reinterpret_cast<uchar*>(packed.data());
+		for (auto row = 0; row != height; ++row) {
+			std::memcpy(target + (row * targetBytesPerLine), source, targetBytesPerLine);
+			source += sourceBytesPerLine;
+		}
+		uploadData = packed.constData();
+	}
+#endif
 	if (hasSize != size) {
 		f.glTexImage2D(
 			GL_TEXTURE_2D,
@@ -408,7 +438,7 @@ void Panel::Incoming::RendererGL::uploadTexture(
 			0,
 			format,
 			GL_UNSIGNED_BYTE,
-			data);
+			uploadData);
 	} else {
 		f.glTexSubImage2D(
 			GL_TEXTURE_2D,
@@ -419,9 +449,11 @@ void Panel::Incoming::RendererGL::uploadTexture(
 			size.height(),
 			format,
 			GL_UNSIGNED_BYTE,
-			data);
+			uploadData);
 	}
+#if defined(GL_UNPACK_ROW_LENGTH)
 	f.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
 }
 
 Panel::Incoming::RendererSW::RendererSW(not_null<Incoming*> owner)

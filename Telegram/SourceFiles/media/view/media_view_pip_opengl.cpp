@@ -15,6 +15,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_media_view.h"
 #include "styles/style_widgets.h"
 
+#include <QtCore/QByteArray>
+#include <cstring>
+
 namespace Media::View {
 namespace {
 
@@ -25,6 +28,14 @@ constexpr auto kPlaybackOffset = kRadialLoadingOffset + 4;
 constexpr auto kVolumeControllerOffset = kPlaybackOffset + 4;
 constexpr auto kControlsOffset = kVolumeControllerOffset + 4;
 constexpr auto kControlValues = 4 * 4 + 2 * 4;
+
+[[nodiscard]] int BytesPerPixelFromFormat(GLint format) {
+	switch (format) {
+	case GL_RGBA: return 4;
+	case GL_RGB: return 3;
+	default: return 1;
+	}
+}
 
 [[nodiscard]] ShaderPart FragmentAddControlOver() {
 	return {
@@ -470,7 +481,27 @@ void Pip::RendererGL::uploadTexture(
 		QSize hasSize,
 		int stride,
 		const void *data) const {
+	const auto components = BytesPerPixelFromFormat(format);
+	const auto width = size.width();
+	const auto height = size.height();
+	auto uploadData = data;
+	QByteArray packed;
+#if defined(GL_UNPACK_ROW_LENGTH)
 	_f->glPixelStorei(GL_UNPACK_ROW_LENGTH, stride);
+#else
+	if (stride != width) {
+		const auto sourceBytesPerLine = stride * components;
+		const auto targetBytesPerLine = width * components;
+		packed.resize(targetBytesPerLine * height);
+		auto source = static_cast<const uchar*>(data);
+		auto target = reinterpret_cast<uchar*>(packed.data());
+		for (auto row = 0; row != height; ++row) {
+			std::memcpy(target + (row * targetBytesPerLine), source, targetBytesPerLine);
+			source += sourceBytesPerLine;
+		}
+		uploadData = packed.constData();
+	}
+#endif
 	if (hasSize != size) {
 		_f->glTexImage2D(
 			GL_TEXTURE_2D,
@@ -481,7 +512,7 @@ void Pip::RendererGL::uploadTexture(
 			0,
 			format,
 			GL_UNSIGNED_BYTE,
-			data);
+			uploadData);
 	} else {
 		_f->glTexSubImage2D(
 			GL_TEXTURE_2D,
@@ -492,9 +523,11 @@ void Pip::RendererGL::uploadTexture(
 			size.height(),
 			format,
 			GL_UNSIGNED_BYTE,
-			data);
+			uploadData);
 	}
+#if defined(GL_UNPACK_ROW_LENGTH)
 	_f->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#endif
 }
 
 void Pip::RendererGL::paintRadialLoading(
