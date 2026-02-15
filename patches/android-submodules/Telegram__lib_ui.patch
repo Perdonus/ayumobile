@@ -258,15 +258,14 @@ index 0000000..0ff90c4
 +} // namespace Platform
 +} // namespace Ui
 diff --git a/cmake/generate_emoji.cmake b/cmake/generate_emoji.cmake
-index 9262e78..1bbd7be 100644
+index 9262e78..6389a51 100644
 --- a/cmake/generate_emoji.cmake
 +++ b/cmake/generate_emoji.cmake
-@@ -15,13 +15,18 @@ function(generate_emoji target_name emoji_map suggestions_json)
-     set(gen_src
+@@ -14,13 +14,19 @@ function(generate_emoji target_name emoji_map suggestions_json)
          ${CMAKE_CURRENT_SOURCE_DIR}/${emoji_map}
          ${CMAKE_CURRENT_SOURCE_DIR}/${suggestions_json}
      )
-
++
 +    set(codegen_emoji_command "codegen_emoji")
 +    if (TDESKTOP_CODEGEN_EMOJI)
 +        set(codegen_emoji_command "${TDESKTOP_CODEGEN_EMOJI}")
@@ -284,10 +283,11 @@ index 9262e78..1bbd7be 100644
          ${gen_src}
      COMMENT "Generating emoji (${target_name})"
 diff --git a/cmake/generate_palette.cmake b/cmake/generate_palette.cmake
-index e3f7043..1f744d5 100644
+index e3f7043..ecc0201 100644
 --- a/cmake/generate_palette.cmake
 +++ b/cmake/generate_palette.cmake
-@@ -10,12 +10,17 @@ function(generate_palette target_name palette_file)
+@@ -9,13 +9,18 @@ function(generate_palette target_name palette_file)
+     )
  
      set(gen_src ${CMAKE_CURRENT_SOURCE_DIR}/${palette_file})
 +    set(codegen_style_command "codegen_style")
@@ -307,10 +307,10 @@ index e3f7043..1f744d5 100644
          -o${gen_dst}/styles
          -t${gen_dst}/styles/palette
 diff --git a/cmake/generate_styles.cmake b/cmake/generate_styles.cmake
-index 84617ea..cb6bb2b 100644
+index 84617ea..c83b5a6 100644
 --- a/cmake/generate_styles.cmake
 +++ b/cmake/generate_styles.cmake
-@@ -17,12 +17,17 @@ function(generate_styles target_name src_loc style_files dependent_style_files)
+@@ -16,13 +16,18 @@ function(generate_styles target_name src_loc style_files dependent_style_files)
      endforeach()
      list(APPEND full_dependencies_list ${full_generation_sources})
  
