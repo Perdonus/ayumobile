@@ -107,12 +107,19 @@ jobs:
           ANDROID_SDK_ROOT: ${{ env.CI_CACHE_ROOT }}/android-sdk
         run: |
           set -euxo pipefail
+          set +o pipefail
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" \
             "platform-tools" \
             "platforms;android-${ANDROID_COMPILE_SDK}" \
             "build-tools;${ANDROID_BUILD_TOOLS}" \
             "ndk;${ANDROID_NDK_VERSION}" \
             "cmake;3.22.1"
+          sdk_rc=${PIPESTATUS[1]}
+          set -o pipefail
+          if [ "$sdk_rc" -ne 0 ]; then
+            echo "sdkmanager packages failed: $sdk_rc" >&2
+            exit "$sdk_rc"
+          fi
 
       - name: Install Qt host + Android
         env:
