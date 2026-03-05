@@ -247,6 +247,17 @@ jobs:
 
           if [ "$build_rc" -ne 0 ]; then
             tail -n 200 "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-android-tail.log" || true
+            if [ -s "$GITHUB_WORKSPACE/build-android-tail.log" ]; then
+              tail_payload="$(
+                python3 - <<'PY'
+from pathlib import Path
+
+text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace")
+print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")
+PY
+              )"
+              echo "::error title=build-tail::$tail_payload"
+            fi
             {
               echo "### Build APK failed"
               echo
