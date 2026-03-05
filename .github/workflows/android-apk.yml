@@ -247,8 +247,16 @@ jobs:
 
           if [ "$build_rc" -ne 0 ]; then
             tail -n 200 "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-android-tail.log" || true
-            escaped_tail="$(python3 -c \"import pathlib; tail=pathlib.Path('build-android-tail.log'); text=(tail.read_text(errors='replace') if tail.exists() else 'build log tail is unavailable'); text=text[-30000:]; text=text.replace('%','%25').replace('\\\\r','%0D').replace('\\\\n','%0A'); print(text)\")"
-            echo "::error title=Build APK failed::${escaped_tail}"
+            {
+              echo "### Build APK failed"
+              echo
+              echo "Last 200 lines:"
+              echo
+              echo '```text'
+              cat "$GITHUB_WORKSPACE/build-android-tail.log"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY" || true
+            echo "::error::Build APK failed. Check artifact ayumobile-build-log."
             exit "$build_rc"
           fi
 
