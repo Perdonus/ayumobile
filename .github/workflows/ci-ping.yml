@@ -6,17 +6,27 @@ on:
       - dev
   check_suite:
     types:
-      - requested
+      - completed
+  check_run:
+    types:
+      - created
       - rerequested
   workflow_dispatch:
 
 jobs:
   ping:
     if: |
-      github.event_name != 'check_suite' ||
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
       (
+        github.event_name == 'check_suite' &&
         github.event.check_suite.head_branch == 'dev' &&
         github.event.check_suite.app.slug == 'supabase'
+      ) ||
+      (
+        github.event_name == 'check_run' &&
+        github.event.check_run.check_suite.head_branch == 'dev' &&
+        github.event.check_run.app.slug == 'supabase'
       )
     runs-on: ubuntu-22.04
     steps:
@@ -27,3 +37,5 @@ jobs:
           echo "event=${GITHUB_EVENT_NAME}"
           echo "suite_app=${{ github.event_name == 'check_suite' && github.event.check_suite.app.slug || '' }}"
           echo "suite_sha=${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || '' }}"
+          echo "run_app=${{ github.event_name == 'check_run' && github.event.check_run.app.slug || '' }}"
+          echo "run_sha=${{ github.event_name == 'check_run' && github.event.check_run.head_sha || '' }}"
