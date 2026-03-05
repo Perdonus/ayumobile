@@ -4,14 +4,24 @@ on:
   push:
     branches:
       - dev
+  check_suite:
+    types:
+      - requested
+      - rerequested
   workflow_dispatch:
 
 concurrency:
-  group: android-apk-${{ github.ref }}
+  group: android-apk-${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
   build-apk:
+    if: |
+      github.event_name != 'check_suite' ||
+      (
+        github.event.check_suite.head_branch == 'dev' &&
+        github.event.check_suite.app.slug == 'supabase'
+      )
     runs-on: ubuntu-22.04
     timeout-minutes: 360
     env:
@@ -27,6 +37,7 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          ref: ${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || github.sha }}
 
       - name: Setup Java
         uses: actions/setup-java@v4

@@ -4,13 +4,26 @@ on:
   push:
     branches:
       - dev
+  check_suite:
+    types:
+      - requested
+      - rerequested
   workflow_dispatch:
 
 jobs:
   ping:
+    if: |
+      github.event_name != 'check_suite' ||
+      (
+        github.event.check_suite.head_branch == 'dev' &&
+        github.event.check_suite.app.slug == 'supabase'
+      )
     runs-on: ubuntu-22.04
     steps:
       - name: Echo
         run: |
           echo "CI ping on $(date -u)"
           echo "sha=${GITHUB_SHA}"
+          echo "event=${GITHUB_EVENT_NAME}"
+          echo "suite_app=${{ github.event_name == 'check_suite' && github.event.check_suite.app.slug || '' }}"
+          echo "suite_sha=${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || '' }}"
