@@ -20,7 +20,7 @@ jobs:
       ANDROID_COMPILE_SDK: "34"
       ANDROID_BUILD_TOOLS: "34.0.0"
       ANDROID_NDK_VERSION: "26.1.10909125"
-      CI_CACHE_ROOT: ${{ runner.temp }}/ayumobile-cache
+      CI_CACHE_ROOT: ${{ github.workspace }}/.ci-cache
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -239,4 +239,3 @@ jobs:
           name: ayumobile-apk
           path: AyuGram-dev.apk
           if-no-files-found: error
-
