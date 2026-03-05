@@ -249,12 +249,7 @@ jobs:
             tail -n 200 "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-android-tail.log" || true
             if [ -s "$GITHUB_WORKSPACE/build-android-tail.log" ]; then
               tail_payload="$(
-                python3 - <<'PY'
-from pathlib import Path
-
-text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace")
-print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")
-PY
+                python3 -c 'from pathlib import Path; text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\\r", "%0D").replace("\\n", "%0A"), end="")'
               )"
               echo "::error title=build-tail::$tail_payload"
             fi
