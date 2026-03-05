@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+  create:
   check_suite:
     types:
       - completed
@@ -18,6 +19,11 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'create' &&
+        github.ref_type == 'branch' &&
+        startsWith(github.ref_name, 'gha-build-')
+      ) ||
       (
         github.event_name == 'check_suite' &&
         github.event.check_suite.head_branch == 'dev' &&
@@ -35,6 +41,8 @@ jobs:
           echo "CI ping on $(date -u)"
           echo "sha=${GITHUB_SHA}"
           echo "event=${GITHUB_EVENT_NAME}"
+          echo "ref_type=${GITHUB_REF_TYPE}"
+          echo "ref_name=${GITHUB_REF_NAME}"
           echo "suite_app=${{ github.event_name == 'check_suite' && github.event.check_suite.app.slug || '' }}"
           echo "suite_sha=${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || '' }}"
           echo "run_app=${{ github.event_name == 'check_run' && github.event.check_run.app.slug || '' }}"
