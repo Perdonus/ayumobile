@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - dev
+  schedule:
+    - cron: '*/5 * * * *'
   create:
   check_suite:
     types:
@@ -22,6 +24,7 @@ jobs:
   build-apk:
     if: |
       github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'create' &&
