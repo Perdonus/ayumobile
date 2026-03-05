@@ -249,9 +249,17 @@ jobs:
             tail -n 200 "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-android-tail.log" || true
             if [ -s "$GITHUB_WORKSPACE/build-android-tail.log" ]; then
               tail_payload="$(
-                python3 -c 'from pathlib import Path; text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\\r", "%0D").replace("\\n", "%0A"), end="")'
+                python3 -c 'from pathlib import Path; text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")'
               )"
               echo "::error title=build-tail::$tail_payload"
+              tail -n 60 "$GITHUB_WORKSPACE/build-android-tail.log" \
+                | nl -ba -w3 -s' ' \
+                | while IFS= read -r line; do
+                    line="${line//'%'/'%25'}"
+                    line="${line//$'\r'/'%0D'}"
+                    line="${line//$'\n'/'%0A'}"
+                    echo "::error title=build-tail-line::$line"
+                  done
             fi
             {
               echo "### Build APK failed"
