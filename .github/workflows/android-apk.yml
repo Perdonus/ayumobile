@@ -1,0 +1,242 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    env:
+      QT_VER: 6.8.3
+      ANDROID_API: "29"
+      ANDROID_COMPILE_SDK: "34"
+      ANDROID_BUILD_TOOLS: "34.0.0"
+      ANDROID_NDK_VERSION: "26.1.10909125"
+      CI_CACHE_ROOT: ${{ runner.temp }}/ayumobile-cache
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install base packages
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ca-certificates git git-lfs curl unzip zip expect \
+            build-essential cmake ninja-build ccache rsync \
+            autoconf automake libtool pkg-config gperf perl yasm nasm \
+            libssl-dev \
+            libgl1-mesa-dev libopengl-dev libglx-dev mesa-common-dev
+
+      - name: Install Python tools
+        run: |
+          set -euxo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install aqtinstall==3.2.1
+
+      - name: Restore Android SDK cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CI_CACHE_ROOT }}/android-sdk
+          key: android-sdk-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}
+
+      - name: Restore Qt cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CI_CACHE_ROOT }}/qt
+          key: qt-${{ runner.os }}-${{ env.QT_VER }}
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.CI_CACHE_ROOT }}/android-deps
+            ${{ env.CI_CACHE_ROOT }}/android-deps-src
+            ${{ env.CI_CACHE_ROOT }}/host-codegen
+            ${{ env.CI_CACHE_ROOT }}/ccache
+          key: deps-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-${{ hashFiles('scripts/prepare-android-deps.sh', 'scripts/build-host-codegen.sh', 'scripts/apply-android-submodule-patches.sh', 'patches/android-submodules/**') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-
+
+      - name: Install Android commandline-tools
+        env:
+          ANDROID_SDK_ROOT: ${{ env.CI_CACHE_ROOT }}/android-sdk
+        run: |
+          set -euxo pipefail
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            curl -fL --retry 5 --retry-delay 5 \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+              -o /tmp/android-cmdline-tools.zip
+            unzip -q /tmp/android-cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+            rm -rf "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+            mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          fi
+
+      - name: Accept Android licenses
+        env:
+          ANDROID_SDK_ROOT: ${{ env.CI_CACHE_ROOT }}/android-sdk
+        run: |
+          set -euxo pipefail
+          timeout 1200 bash -lc 'yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses'
+
+      - name: Install Android SDK packages
+        env:
+          ANDROID_SDK_ROOT: ${{ env.CI_CACHE_ROOT }}/android-sdk
+        run: |
+          set -euxo pipefail
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" \
+            "platform-tools" \
+            "platforms;android-${ANDROID_COMPILE_SDK}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "ndk;${ANDROID_NDK_VERSION}" \
+            "cmake;3.22.1"
+
+      - name: Install Qt host + Android
+        env:
+          QT_ROOT: ${{ env.CI_CACHE_ROOT }}/qt
+        run: |
+          set -euxo pipefail
+          mkdir -p "$QT_ROOT"
+          if [ ! -d "$QT_ROOT/$QT_VER/gcc_64" ]; then
+            python -u -m aqt install-qt -O "$QT_ROOT" linux desktop "$QT_VER" linux_gcc_64
+          fi
+          if [ ! -d "$QT_ROOT/$QT_VER/android_arm64_v8a" ]; then
+            python -u -m aqt install-qt -O "$QT_ROOT" linux android "$QT_VER" android_arm64_v8a
+          fi
+
+      - name: Build APK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.CI_CACHE_ROOT }}/android-sdk
+          QT_ROOT: ${{ env.CI_CACHE_ROOT }}/qt
+          DEPS_ROOT: ${{ env.CI_CACHE_ROOT }}/android-deps
+          SRC_ROOT: ${{ env.CI_CACHE_ROOT }}/android-deps-src
+          HOST_CODEGEN_DIR: ${{ env.CI_CACHE_ROOT }}/host-codegen
+          CCACHE_DIR: ${{ env.CI_CACHE_ROOT }}/ccache
+        run: |
+          set -euxo pipefail
+
+          export JAVA_HOME="${JAVA_HOME_17_X64}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+          export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION"
+          export QT_HOST_PATH="$QT_ROOT/$QT_VER/gcc_64"
+          export QT_ANDROID_PATH="$QT_ROOT/$QT_VER/android_arm64_v8a"
+          export PATH="$QT_HOST_PATH/bin:$PATH"
+
+          test -f "$QT_ANDROID_PATH/lib/cmake/Qt6/qt.toolchain.cmake"
+          test -f "$QT_ANDROID_PATH/lib/cmake/Qt6/Qt6Config.cmake"
+
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+          chmod +x scripts/apply-android-submodule-patches.sh
+          ./scripts/apply-android-submodule-patches.sh
+
+          chmod +x scripts/build-host-codegen.sh
+          HOST_CODEGEN_DIR="$HOST_CODEGEN_DIR" QT_HOST_PATH="$QT_HOST_PATH" ./scripts/build-host-codegen.sh
+          HOST_CODEGEN_BIN="$HOST_CODEGEN_DIR/bin"
+          test -x "$HOST_CODEGEN_BIN/codegen_emoji"
+          test -x "$HOST_CODEGEN_BIN/codegen_style"
+          test -x "$HOST_CODEGEN_BIN/codegen_lang"
+
+          chmod +x scripts/prepare-android-deps.sh
+          DEPS_ROOT="$DEPS_ROOT" SRC_ROOT="$SRC_ROOT" ANDROID_API="$ANDROID_API" ./scripts/prepare-android-deps.sh
+
+          DEPS_PREFIX="$DEPS_ROOT/prefix-arm64"
+          FFMPEG_PREFIX="$DEPS_ROOT/ffmpeg-android-arm64"
+          test -f "$DEPS_PREFIX/lib/libtde2e.a"
+          test -f "$DEPS_PREFIX/lib/libtg_owt.a"
+          test -f "$FFMPEG_PREFIX/lib/libavcodec.a"
+
+          export PKG_CONFIG_PATH="$DEPS_PREFIX/lib/pkgconfig:$FFMPEG_PREFIX/lib/pkgconfig"
+          export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
+
+          rm -rf out/android-arm64-native
+
+          cmake -S . -B out/android-arm64-native -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$QT_ANDROID_PATH/lib/cmake/Qt6/qt.toolchain.cmake" \
+            -DCMAKE_SYSTEM_NAME=Android \
+            -DCMAKE_PREFIX_PATH="$DEPS_PREFIX;$QT_ANDROID_PATH" \
+            -DQT_HOST_PATH="$QT_HOST_PATH" \
+            -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
+            -DANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-29 \
+            -DDESKTOP_APP_USE_PACKAGED=ON \
+            -DDESKTOP_APP_SPECIAL_TARGET=android \
+            -DJPEG_INCLUDE_DIR="$DEPS_PREFIX/include" \
+            -DJPEG_LIBRARY="$DEPS_PREFIX/lib/libjpeg.a" \
+            -DOpenAL_DIR="$DEPS_PREFIX/lib/cmake/OpenAL" \
+            -Dtde2e_DIR="$DEPS_PREFIX/lib/cmake/tde2e" \
+            -Dtg_owt_DIR="$DEPS_PREFIX/lib/cmake/tg_owt" \
+            -DOPENSSL_ROOT_DIR="$DEPS_PREFIX" \
+            -DOPENSSL_INCLUDE_DIR="$DEPS_PREFIX/include" \
+            -DOPENSSL_SSL_LIBRARY="$DEPS_PREFIX/lib/libssl.a" \
+            -DOPENSSL_CRYPTO_LIBRARY="$DEPS_PREFIX/lib/libcrypto.a" \
+            -DTDESKTOP_API_ID=17349 \
+            -DTDESKTOP_API_HASH=344583e45741c457fe1862106095a5eb \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DTDESKTOP_CODEGEN_EMOJI="$HOST_CODEGEN_BIN/codegen_emoji" \
+            -DTDESKTOP_CODEGEN_STYLE="$HOST_CODEGEN_BIN/codegen_style" \
+            -DTDESKTOP_CODEGEN_LANG="$HOST_CODEGEN_BIN/codegen_lang"
+
+          cmake --build out/android-arm64-native --target Telegram -j"$(nproc)"
+
+          set +e
+          cmake --build out/android-arm64-native --target apk -j"$(nproc)"
+          apk_rc=$?
+          if [ "$apk_rc" -ne 0 ]; then
+            cmake --build out/android-arm64-native --target Telegram_apk -j"$(nproc)"
+            apk_rc=$?
+          fi
+          set -e
+
+          if [ "$apk_rc" -ne 0 ]; then
+            echo "APK target failed." >&2
+            exit "$apk_rc"
+          fi
+
+          APK_PATH="$(find out/android-arm64-native -type f -name '*.apk' | head -n 1 || true)"
+          if [ -z "$APK_PATH" ]; then
+            echo "APK not found." >&2
+            exit 1
+          fi
+
+          cp "$APK_PATH" AyuGram-dev.apk
+          ls -lh AyuGram-dev.apk
+
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ayumobile-apk
+          path: AyuGram-dev.apk
+          if-no-files-found: error
+
