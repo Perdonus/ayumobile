@@ -32,7 +32,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 
+#if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
 #include <ksandbox.h>
+#endif
 
 extern "C" {
 #include <openssl/rsa.h>
@@ -1485,6 +1487,9 @@ int UpdateChecker::size() const {
 //}
 
 bool checkReadyUpdate() {
+#ifdef Q_OS_ANDROID
+	return false;
+#else // Q_OS_ANDROID
 	QString readyFilePath = cWorkingDir() + u"tupdates/temp/ready"_q, readyPath = cWorkingDir() + u"tupdates/temp"_q;
 	if (!QFile(readyFilePath).exists() || cExeName().isEmpty()) {
 		if (QDir(cWorkingDir() + u"tupdates/ready"_q).exists() || QDir(cWorkingDir() + u"tupdates/temp"_q).exists()) {
@@ -1607,6 +1612,7 @@ bool checkReadyUpdate() {
 #endif // Q_OS_MAC
 
 	return true;
+#endif // Q_OS_ANDROID
 }
 
 void UpdateApplication() {
@@ -1616,6 +1622,8 @@ void UpdateApplication() {
 			return "https://www.microsoft.com/en-us/store/p/telegram-desktop/9nztwsqntd0s";
 #elif defined OS_MAC_STORE // OS_WIN_STORE
 			return "https://itunes.apple.com/ae/app/telegram-desktop/id946399090";
+#elif defined Q_OS_ANDROID // OS_WIN_STORE || OS_MAC_STORE
+			return "https://t.me/AyuGramReleases";
 #else // OS_WIN_STORE || OS_MAC_STORE
 			if (KSandbox::isFlatpak()) {
 				return "https://flathub.org/apps/details/org.telegram.desktop";
