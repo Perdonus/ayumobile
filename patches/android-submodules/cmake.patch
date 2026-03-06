@@ -17,14 +17,14 @@ index 7854c9f..a699f9d 100644
 +    endif()
      return()
  endif()
-
+ 
 diff --git a/external/openal/CMakeLists.txt b/external/openal/CMakeLists.txt
 index a054a58..0d7d8bf 100644
 --- a/external/openal/CMakeLists.txt
 +++ b/external/openal/CMakeLists.txt
 @@ -8,6 +8,15 @@ add_library(external_openal INTERFACE IMPORTED GLOBAL)
  add_library(desktop-app::external_openal ALIAS external_openal)
-
+ 
  if (DESKTOP_APP_USE_PACKAGED OR LINUX)
 +    if (ANDROID AND NOT TARGET OpenSL::OpenSLES)
 +        find_library(OPENSL_ES_LIBRARY OpenSLES)
@@ -39,32 +39,53 @@ index a054a58..0d7d8bf 100644
      target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
      return()
 diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
-index a201e92..175d7c8 100644
+index a201e92..cab54ad 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -5,13 +5,40 @@
+@@ -5,13 +5,61 @@
  # https://github.com/desktop-app/legal/blob/master/LEGAL
-
+ 
  if (DESKTOP_APP_USE_PACKAGED)
 -    add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)
 -    add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
 +    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
 +        add_library(external_rnnoise STATIC IMPORTED GLOBAL)
 +        add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
-
+ 
 -    find_package(PkgConfig REQUIRED)
 -    pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
 +        find_package(PkgConfig REQUIRED)
 +        pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
-+        find_library(
-+            DESKTOP_APP_RNNOISE_LIBRARY
-+            NAMES rnnoise
-+            PATHS ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}
-+            NO_DEFAULT_PATH
-+            REQUIRED
-+        )
-
++        pkg_get_variable(DESKTOP_APP_RNNOISE_LIBDIR rnnoise libdir)
++        pkg_get_variable(DESKTOP_APP_RNNOISE_INCLUDEDIR rnnoise includedir)
+ 
 -    target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
++        foreach (_candidate IN LISTS
++            DESKTOP_APP_RNNOISE_LINK_LIBRARIES
++            DESKTOP_APP_RNNOISE_LIBRARIES)
++            if (IS_ABSOLUTE "${_candidate}" AND EXISTS "${_candidate}")
++                set(DESKTOP_APP_RNNOISE_LIBRARY "${_candidate}")
++                break()
++            endif()
++        endforeach()
++
++        if (NOT DESKTOP_APP_RNNOISE_LIBRARY)
++            find_library(
++                DESKTOP_APP_RNNOISE_LIBRARY
++                NAMES rnnoise librnnoise.a
++                PATHS
++                    ${DESKTOP_APP_RNNOISE_LIBDIR}
++                    ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}
++                NO_DEFAULT_PATH
++            )
++        endif()
++        if (NOT DESKTOP_APP_RNNOISE_LIBRARY)
++            message(FATAL_ERROR "Could not resolve rnnoise static library.")
++        endif()
++        if (NOT DESKTOP_APP_RNNOISE_INCLUDE_DIRS AND DESKTOP_APP_RNNOISE_INCLUDEDIR)
++            set(DESKTOP_APP_RNNOISE_INCLUDE_DIRS "${DESKTOP_APP_RNNOISE_INCLUDEDIR}")
++        endif()
++
 +        target_include_directories(external_rnnoise SYSTEM
 +        INTERFACE
 +            ${DESKTOP_APP_RNNOISE_INCLUDE_DIRS}
@@ -87,14 +108,14 @@ index a201e92..175d7c8 100644
 +    endif()
      return()
  endif()
-
+ 
 diff --git a/external/xxhash/CMakeLists.txt b/external/xxhash/CMakeLists.txt
 index 9c2d02b..1845741 100644
 --- a/external/xxhash/CMakeLists.txt
 +++ b/external/xxhash/CMakeLists.txt
 @@ -8,10 +8,12 @@ add_library(external_xxhash INTERFACE IMPORTED GLOBAL)
  add_library(desktop-app::external_xxhash ALIAS external_xxhash)
-
+ 
  if (DESKTOP_APP_USE_PACKAGED)
 -    find_package(xxHash QUIET)
 -    if (xxHash_FOUND)
@@ -107,7 +128,7 @@ index 9c2d02b..1845741 100644
 +            return()
 +        endif()
      endif()
-
+ 
      find_package(PkgConfig)
 diff --git a/init_target.cmake b/init_target.cmake
 index 9d4468e..c070cc2 100644
@@ -190,7 +211,7 @@ index 775c8e6..126be0a 100644
 @@ -22,10 +22,17 @@ if (DESKTOP_APP_DISABLE_X11_INTEGRATION)
      )
  endif()
-
+ 
 +set(desktop_app_is_android 0)
 +if (CMAKE_SYSTEM_NAME STREQUAL "Android")
 +    set(desktop_app_is_android 1)
@@ -205,42 +226,6 @@ index 775c8e6..126be0a 100644
  elseif (LINUX)
      include(cmake/options_linux.cmake)
  else()
-diff --git a/options_android.cmake b/options_android.cmake
-new file mode 100644
-index 0000000..082e7f4
---- /dev/null
-+++ b/options_android.cmake
-@@ -0,0 +1,30 @@
-+# This file is part of Desktop App Toolkit,
-+# a set of libraries for developing nice desktop applications.
-+#
-+# For license and copyright information please follow this link:
-+# https://github.com/desktop-app/legal/blob/master/LEGAL
-+
-+target_compile_options(common_options
-+INTERFACE
-+    -fPIC
-+    -pipe
-+    $<$<NOT:$<CONFIG:Debug>>:-fno-strict-aliasing>
-+)
-+
-+target_compile_options_if_exists(common_options
-+INTERFACE
-+    -Wall
-+    -Wextra
-+    -Wno-unused-parameter
-+    -Wno-switch
-+    -Wno-maybe-uninitialized
-+    -Wno-missing-field-initializers
-+    -Wno-sign-compare
-+    -Wno-deprecated
-+)
-+
-+target_link_libraries(common_options
-+INTERFACE
-+    log
-+    android
-+)
 diff --git a/validate_special_target.cmake b/validate_special_target.cmake
 index 57e0950..16f7674 100644
 --- a/validate_special_target.cmake
@@ -248,7 +233,7 @@ index 57e0950..16f7674 100644
 @@ -21,6 +21,19 @@ function(report_bad_special_target)
      endif()
  endfunction()
-
+ 
 +set(desktop_app_is_android 0)
 +if (CMAKE_SYSTEM_NAME STREQUAL "Android")
 +    set(desktop_app_is_android 1)
@@ -268,7 +253,7 @@ index 57e0950..16f7674 100644
 @@ -30,6 +43,8 @@ if (NOT DEFINED MSVC)
      set(MSVC 0)
  endif()
-
+ 
 +set(LINUX 0)
 +
  if (WIN32)
@@ -296,7 +281,7 @@ index 8c496c5..06a6053 100644
 +if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
 +    set(no_special_target 1)
 +endif()
-
+ 
  set(disable_autoupdate 0)
  if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
      OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp"
@@ -307,7 +292,7 @@ index 8c496c5..06a6053 100644
 +    OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
      set(disable_autoupdate 1)
  endif()
-
+ 
 @@ -26,6 +30,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STR
  option(DESKTOP_APP_TEST_APPS "Build test apps, development only." OFF)
  option(DESKTOP_APP_LOTTIE_DISABLE_RECOLORING "Disable recoloring of lottie animations." OFF)
@@ -319,7 +304,7 @@ index 8c496c5..06a6053 100644
 @@ -38,6 +43,10 @@ option(DESKTOP_APP_ASAN "Enable address sanitizer" OFF)
  cmake_dependent_option(DESKTOP_APP_USE_ENCHANT "Use Enchant instead of bundled Hunspell." OFF LINUX OFF)
  cmake_dependent_option(DESKTOP_APP_USE_CLD3 "Disable system text language recognition and use bundled cld3 only." OFF APPLE ON)
-
+ 
 +if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
 +    set(DESKTOP_APP_USE_CLD3 OFF CACHE BOOL "Disable system text language recognition and use bundled cld3 only." FORCE)
 +endif()
@@ -334,6 +319,6 @@ index 8c496c5..06a6053 100644
 +if (DESKTOP_APP_FORCE_DISABLE_CLD3)
 +    set(add_cld3_library 0)
 +endif()
-
+ 
  set(build_macstore 0)
  set(build_winstore 0) # x86 or x64 or arm
