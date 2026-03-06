@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 38ea4d1245e0712e2d1e82f6f89ec01fd75997e0..31b8a45b9366a9caee57e4ad5f577a0d8f3927a3 100644
+index 38ea4d1..31b8a45 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -247,6 +247,35 @@ if (DESKTOP_APP_DISABLE_X11_INTEGRATION)
@@ -40,7 +40,7 @@ index 38ea4d1245e0712e2d1e82f6f89ec01fd75997e0..31b8a45b9366a9caee57e4ad5f577a0d
      ${src_loc}
 diff --git a/base/platform/android/base_file_utilities_android.cpp b/base/platform/android/base_file_utilities_android.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..5d6a115ce94b1007db64358c56a555e7928a9f27
+index 0000000..5d6a115
 --- /dev/null
 +++ b/base/platform/android/base_file_utilities_android.cpp
 @@ -0,0 +1,71 @@
@@ -117,7 +117,7 @@ index 0000000000000000000000000000000000000000..5d6a115ce94b1007db64358c56a555e7
 +} // namespace base::Platform
 diff --git a/base/platform/android/base_info_android.cpp b/base/platform/android/base_info_android.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..0dc545607cbfefb7c645e3b31e04a604cfc6187a
+index 0000000..0dc5456
 --- /dev/null
 +++ b/base/platform/android/base_info_android.cpp
 @@ -0,0 +1,83 @@
@@ -206,7 +206,7 @@ index 0000000000000000000000000000000000000000..0dc545607cbfefb7c645e3b31e04a604
 +} // namespace Platform
 diff --git a/base/platform/android/base_info_android.h b/base/platform/android/base_info_android.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..9058092013a3e37d8244a962e1f4123a7d2a4384
+index 0000000..9058092
 --- /dev/null
 +++ b/base/platform/android/base_info_android.h
 @@ -0,0 +1,41 @@
@@ -253,10 +253,10 @@ index 0000000000000000000000000000000000000000..9058092013a3e37d8244a962e1f4123a
 +} // namespace Platform
 diff --git a/base/platform/android/base_stub_android.cpp b/base/platform/android/base_stub_android.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..d8e9eb4f0345c2f8269682669cf614d4c3d92abb
+index 0000000..10568d8
 --- /dev/null
 +++ b/base/platform/android/base_stub_android.cpp
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,116 @@
 +// This file is part of Desktop App Toolkit,
 +// a set of libraries for developing nice desktop applications.
 +//
@@ -310,6 +310,10 @@ index 0000000000000000000000000000000000000000..d8e9eb4f0345c2f8269682669cf614d4
 +
 +QString KeyName(GlobalShortcutKeyGeneric) {
 +	return QString();
++}
++
++bool IsToggleFullScreenKey(not_null<QKeyEvent*>) {
++	return false;
 +}
 +
 +} // namespace GlobalShortcuts
@@ -371,7 +375,7 @@ index 0000000000000000000000000000000000000000..d8e9eb4f0345c2f8269682669cf614d4
 +} // namespace base
 diff --git a/base/platform/android/base_system_media_controls_android.cpp b/base/platform/android/base_system_media_controls_android.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..1ad360b585b7d9645fe784f10f275b03e7f64552
+index 0000000..1ad360b
 --- /dev/null
 +++ b/base/platform/android/base_system_media_controls_android.cpp
 @@ -0,0 +1,117 @@
@@ -493,7 +497,7 @@ index 0000000000000000000000000000000000000000..1ad360b585b7d9645fe784f10f275b03
 +
 +} // namespace base::Platform
 diff --git a/base/platform/base_platform_info.h b/base/platform/base_platform_info.h
-index 7b297213a6e657c4c1fe61c3c07b64eb79fd5fa0..f81e4794524a21ca73b126797f883379763d68b8 100644
+index 7b29721..f81e479 100644
 --- a/base/platform/base_platform_info.h
 +++ b/base/platform/base_platform_info.h
 @@ -79,6 +79,8 @@ void Finish();

@@ -10,23 +10,23 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/algorithm.h"
 #include "logs.h"
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
+#if !defined Q_OS_WIN && !defined Q_OS_MAC && !defined Q_OS_ANDROID
 #include "base/platform/linux/base_linux_library.h"
 #include <deque>
-#endif // !Q_OS_WIN && !Q_OS_MAC
+#endif // !Q_OS_WIN && !Q_OS_MAC && !Q_OS_ANDROID
 
 #include <QImage>
 
-#ifdef LIB_FFMPEG_USE_QT_PRIVATE_API
+#if defined(LIB_FFMPEG_USE_QT_PRIVATE_API) && !defined(Q_OS_ANDROID)
 #include <private/qdrawhelper_p.h>
-#endif // LIB_FFMPEG_USE_QT_PRIVATE_API
+#endif // LIB_FFMPEG_USE_QT_PRIVATE_API && !Q_OS_ANDROID
 
 extern "C" {
 #include <libavutil/opt.h>
 #include <libavutil/display.h>
 } // extern "C"
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
+#if !defined Q_OS_WIN && !defined Q_OS_MAC && !defined Q_OS_ANDROID
 extern "C" {
 void _libvdpau_so_tramp_resolve_all(void) __attribute__((weak));
 void _libva_drm_so_tramp_resolve_all(void) __attribute__((weak));
@@ -34,7 +34,7 @@ void _libva_x11_so_tramp_resolve_all(void) __attribute__((weak));
 void _libva_so_tramp_resolve_all(void) __attribute__((weak));
 void _libdrm_so_tramp_resolve_all(void) __attribute__((weak));
 } // extern "C"
-#endif // !Q_OS_WIN && !Q_OS_MAC
+#endif // !Q_OS_WIN && !Q_OS_MAC && !Q_OS_ANDROID
 
 namespace FFmpeg {
 namespace {
@@ -77,31 +77,31 @@ void UnPremultiplyLine(uchar *dst, const uchar *src, int intsCount) {
 	[[maybe_unused]] const auto udst = reinterpret_cast<uint*>(dst);
 	const auto usrc = reinterpret_cast<const uint*>(src);
 
-#ifndef LIB_FFMPEG_USE_QT_PRIVATE_API
+#if !defined(LIB_FFMPEG_USE_QT_PRIVATE_API) || defined(Q_OS_ANDROID)
 	for (auto i = 0; i != intsCount; ++i) {
 		udst[i] = qUnpremultiply(usrc[i]);
 	}
-#else // !LIB_FFMPEG_USE_QT_PRIVATE_API
+#else // !LIB_FFMPEG_USE_QT_PRIVATE_API || Q_OS_ANDROID
 	static const auto layout = &qPixelLayouts[QImage::Format_ARGB32];
 	layout->storeFromARGB32PM(dst, usrc, 0, intsCount, nullptr, nullptr);
-#endif // LIB_FFMPEG_USE_QT_PRIVATE_API
+#endif // LIB_FFMPEG_USE_QT_PRIVATE_API && !Q_OS_ANDROID
 }
 
 void PremultiplyLine(uchar *dst, const uchar *src, int intsCount) {
 	const auto udst = reinterpret_cast<uint*>(dst);
 	[[maybe_unused]] const auto usrc = reinterpret_cast<const uint*>(src);
 
-#ifndef LIB_FFMPEG_USE_QT_PRIVATE_API
+#if !defined(LIB_FFMPEG_USE_QT_PRIVATE_API) || defined(Q_OS_ANDROID)
 	for (auto i = 0; i != intsCount; ++i) {
 		udst[i] = qPremultiply(usrc[i]);
 	}
-#else // !LIB_FFMPEG_USE_QT_PRIVATE_API
+#else // !LIB_FFMPEG_USE_QT_PRIVATE_API || Q_OS_ANDROID
 	static const auto layout = &qPixelLayouts[QImage::Format_ARGB32];
 	layout->fetchToARGB32PM(udst, src, 0, intsCount, nullptr, nullptr);
-#endif // LIB_FFMPEG_USE_QT_PRIVATE_API
+#endif // LIB_FFMPEG_USE_QT_PRIVATE_API && !Q_OS_ANDROID
 }
 
-#if !defined Q_OS_WIN && !defined Q_OS_MAC
+#if !defined Q_OS_WIN && !defined Q_OS_MAC && !defined Q_OS_ANDROID
 [[nodiscard]] auto CheckHwLibs() {
 	auto list = std::deque{
 		AV_PIX_FMT_CUDA,
@@ -128,7 +128,7 @@ void PremultiplyLine(uchar *dst, const uchar *src, int intsCount) {
 	}
 	return list;
 }
-#endif // !Q_OS_WIN && !Q_OS_MAC
+#endif // !Q_OS_WIN && !Q_OS_MAC && !Q_OS_ANDROID
 
 [[nodiscard]] bool InitHw(AVCodecContext *context, AVHWDeviceType type) {
 	AVCodecContext *parent = static_cast<AVCodecContext*>(context->opaque);

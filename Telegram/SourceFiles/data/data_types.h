@@ -12,6 +12,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_msg_id.h"
 #include "base/qt/qt_compare.h"
 
+#include <utility>
+
 class HistoryItem;
 using HistoryItemsList = std::vector<not_null<HistoryItem*>>;
 
@@ -397,6 +399,15 @@ struct ForwardDraft {
 struct ResolvedForwardDraft {
 	HistoryItemsList items;
 	ForwardOptions options = ForwardOptions::PreserveInfo;
+
+	ResolvedForwardDraft() = default;
+	ResolvedForwardDraft(
+		HistoryItemsList items,
+		ForwardOptions options = ForwardOptions::PreserveInfo)
+	: items(std::move(items))
+	, options(options) {
+	}
+	~ResolvedForwardDraft() = default;
 };
 
 } // namespace Data
