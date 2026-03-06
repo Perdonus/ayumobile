@@ -39,10 +39,10 @@ index a054a58..0d7d8bf 100644
      target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
      return()
 diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
-index a201e92..5dbd51d 100644
+index a201e92..175d7c8 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -5,13 +5,41 @@
+@@ -5,13 +5,40 @@
  # https://github.com/desktop-app/legal/blob/master/LEGAL
 
  if (DESKTOP_APP_USE_PACKAGED)
@@ -54,21 +54,20 @@ index a201e92..5dbd51d 100644
 
 -    find_package(PkgConfig REQUIRED)
 -    pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
-+        find_path(
-+            DESKTOP_APP_RNNOISE_INCLUDE_DIR
-+            NAMES rnnoise.h
-+            PATH_SUFFIXES include
-+        )
++        find_package(PkgConfig REQUIRED)
++        pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
 +        find_library(
 +            DESKTOP_APP_RNNOISE_LIBRARY
-+            NAMES rnnoise librnnoise.a
++            NAMES rnnoise
++            PATHS ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}
++            NO_DEFAULT_PATH
 +            REQUIRED
 +        )
 
 -    target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
 +        target_include_directories(external_rnnoise SYSTEM
 +        INTERFACE
-+            ${DESKTOP_APP_RNNOISE_INCLUDE_DIR}
++            ${DESKTOP_APP_RNNOISE_INCLUDE_DIRS}
 +        )
 +        set_target_properties(external_rnnoise PROPERTIES
 +            IMPORTED_LOCATION "${DESKTOP_APP_RNNOISE_LIBRARY}"
