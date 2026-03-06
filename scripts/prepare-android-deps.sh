@@ -32,9 +32,10 @@ msg() {
   echo "[DEPS] $*"
 }
 
-check_android_static_archive() {
-  local archive_path="$1"
-  local output_path="${DEPS_ROOT}/.archive-check/$(basename "${archive_path}").so"
+check_android_link() {
+  local output_name="$1"
+  shift
+  local output_path="${DEPS_ROOT}/.archive-check/${output_name}.so"
   local source_path="${DEPS_ROOT}/.archive-check/archive-check.c"
 
   mkdir -p "$(dirname "${output_path}")"
@@ -49,9 +50,34 @@ EOF
     -shared \
     -fPIC \
     "${source_path}" \
-    "${archive_path}" \
+    "$@" \
     -o "${output_path}" \
     >/dev/null 2>&1
+}
+
+localize_rnnoise_archive_symbols() {
+  local archive_path="${PREFIX}/lib/librnnoise.a"
+  local work_dir="${DEPS_ROOT}/.archive-fix/rnnoise"
+  local members_file="${work_dir}/members.txt"
+  local objcopy="${TOOLCHAIN}/bin/llvm-objcopy"
+
+  rm -rf "${work_dir}"
+  mkdir -p "${work_dir}"
+
+  (
+    cd "${work_dir}"
+    "${AR}" t "${archive_path}" > "${members_file}"
+    "${AR}" x "${archive_path}"
+    "${objcopy}" \
+      --localize-symbol=_celt_lpc \
+      --localize-symbol=celt_iir \
+      --localize-symbol=_celt_autocorr \
+      celt_lpc.o
+    mapfile -t members < "${members_file}"
+    rm -f "${archive_path}"
+    "${AR}" crs "${archive_path}" "${members[@]}"
+  )
+  "${RANLIB}" "${archive_path}"
 }
 
 ensure_repo() {
@@ -175,7 +201,7 @@ build_openh264() {
 
 build_libvpx() {
   if [ -f "${PREFIX}/lib/libvpx.a" ] && [ -f "${PREFIX}/lib/pkgconfig/vpx.pc" ]; then
-    if check_android_static_archive "${PREFIX}/lib/libvpx.a"; then
+    if check_android_link "libvpx-check" "${PREFIX}/lib/libvpx.a"; then
       msg "libvpx already built"
       return
     fi
@@ -214,8 +240,15 @@ build_libvpx() {
 
 build_rnnoise() {
   if [ -f "${PREFIX}/lib/librnnoise.a" ] && [ -f "${PREFIX}/lib/pkgconfig/rnnoise.pc" ]; then
-    msg "rnnoise already built"
-    return
+    if check_android_link \
+      "rnnoise-opus-check" \
+      "${PREFIX}/lib/librnnoise.a" \
+      "${PREFIX}/lib/libopus.a"; then
+      msg "rnnoise already built"
+      return
+    fi
+    msg "rnnoise cache is invalid, rebuilding"
+    rm -f "${PREFIX}/lib/librnnoise.a" "${PREFIX}/lib/pkgconfig/rnnoise.pc"
   fi
   ensure_repo "rnnoise" "https://github.com/xiph/rnnoise.git" "cdf196b1e9de2f8ff1003328ebf9a4316477429d"
   (
@@ -234,6 +267,11 @@ build_rnnoise() {
     make -j"${NPROC}"
     make install
   )
+  localize_rnnoise_archive_symbols
+  check_android_link \
+    "rnnoise-opus-check" \
+    "${PREFIX}/lib/librnnoise.a" \
+    "${PREFIX}/lib/libopus.a"
 }
 
 build_openssl() {
