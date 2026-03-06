@@ -125,10 +125,10 @@ void AndroidClearAllNotifications() {
 		hash *= 1099511628211ULL;
 	};
 	mix(context.sessionId);
-	mix(uint64(context.peerId));
-	mix(uint64(context.topicRootId));
-	mix(uint64(context.monoforumPeerId));
-	mix(uint64(id.msgId));
+	mix(uint64(context.peerId.value));
+	mix(uint64(context.topicRootId.bare));
+	mix(uint64(context.monoforumPeerId.value));
+	mix(uint64(id.msgId.bare));
 
 	auto result = int(hash & 0x7FFFFFFF);
 	return result ? result : 1;
