@@ -107,7 +107,7 @@ index 0000000..6b66923
 +} // namespace Platform::Language
 diff --git a/spellcheck/spellcheck_highlight_syntax_stub.cpp b/spellcheck/spellcheck_highlight_syntax_stub.cpp
 new file mode 100644
-index 0000000..6d22b54
+index 0000000..a04026d
 --- /dev/null
 +++ b/spellcheck/spellcheck_highlight_syntax_stub.cpp
 @@ -0,0 +1,19 @@
@@ -126,7 +126,7 @@ index 0000000..6d22b54
 +}
 +
 +rpl::producer<HighlightProcessId> HighlightReady() {
-+	return rpl::never<HighlightProcessId>();
++	return {};
 +}
 +
 +} // namespace Spellchecker
