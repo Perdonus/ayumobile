@@ -295,8 +295,27 @@ build_openssl() {
 
 build_ffmpeg() {
   if [ -f "${FFMPEG_PREFIX}/lib/libavcodec.a" ] && [ -f "${FFMPEG_PREFIX}/lib/pkgconfig/libavcodec.pc" ]; then
-    msg "ffmpeg already built"
-    return
+    if check_android_link \
+      "ffmpeg-check" \
+      "${FFMPEG_PREFIX}/lib/libavfilter.a" \
+      "${FFMPEG_PREFIX}/lib/libavformat.a" \
+      "${FFMPEG_PREFIX}/lib/libavcodec.a" \
+      "${FFMPEG_PREFIX}/lib/libswresample.a" \
+      "${FFMPEG_PREFIX}/lib/libswscale.a" \
+      "${FFMPEG_PREFIX}/lib/libavutil.a" \
+      "${PREFIX}/lib/libopus.a" \
+      "${PREFIX}/lib/libopenh264.a" \
+      "${PREFIX}/lib/libvpx.a" \
+      "${PREFIX}/lib/libssl.a" \
+      "${PREFIX}/lib/libcrypto.a" \
+      -lz \
+      -lm \
+      -ldl \
+      -latomic; then
+      msg "ffmpeg already built"
+      return
+    fi
+    msg "ffmpeg cache is invalid, rebuilding"
   fi
   ensure_repo "ffmpeg" "https://github.com/FFmpeg/FFmpeg.git" "d07d2a4ee132e8349fb290ca460e28488f4a6a1c"
   rm -rf "${FFMPEG_PREFIX}"
@@ -318,14 +337,35 @@ build_ffmpeg() {
       --strip="${STRIP}" \
       --nm="${NM}" \
       --enable-pic \
+      --disable-asm \
       --disable-shared \
       --enable-static \
       --disable-programs \
       --disable-doc \
-      --disable-debug
+      --disable-debug \
+      --extra-cflags="-fPIC" \
+      --extra-cxxflags="-fPIC" \
+      --extra-ldflags="-fPIC"
     make -j"${NPROC}"
     make install
   )
+  check_android_link \
+    "ffmpeg-check" \
+    "${FFMPEG_PREFIX}/lib/libavfilter.a" \
+    "${FFMPEG_PREFIX}/lib/libavformat.a" \
+    "${FFMPEG_PREFIX}/lib/libavcodec.a" \
+    "${FFMPEG_PREFIX}/lib/libswresample.a" \
+    "${FFMPEG_PREFIX}/lib/libswscale.a" \
+    "${FFMPEG_PREFIX}/lib/libavutil.a" \
+    "${PREFIX}/lib/libopus.a" \
+    "${PREFIX}/lib/libopenh264.a" \
+    "${PREFIX}/lib/libvpx.a" \
+    "${PREFIX}/lib/libssl.a" \
+    "${PREFIX}/lib/libcrypto.a" \
+    -lz \
+    -lm \
+    -ldl \
+    -latomic
 }
 
 build_tde2e() {
