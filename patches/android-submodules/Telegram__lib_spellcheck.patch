@@ -65,6 +65,46 @@ index 23db91b..41c21e0 100644
  if (LINUX AND use_enchant)
      find_package(PkgConfig REQUIRED)
  
+diff --git a/spellcheck/platform/android/language_android.cpp b/spellcheck/platform/android/language_android.cpp
+new file mode 100644
+index 0000000..14abb9f
+--- /dev/null
++++ b/spellcheck/platform/android/language_android.cpp
+@@ -0,0 +1,15 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "spellcheck/platform/android/language_android.h"
++
++namespace Platform::Language {
++
++LanguageId Recognize(QStringView text) {
++	return {};
++}
++
++} // namespace Platform::Language
+diff --git a/spellcheck/platform/android/language_android.h b/spellcheck/platform/android/language_android.h
+new file mode 100644
+index 0000000..6b66923
+--- /dev/null
++++ b/spellcheck/platform/android/language_android.h
+@@ -0,0 +1,13 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#pragma once
++
++#include "spellcheck/platform/platform_language.h"
++
++namespace Platform::Language {
++
++} // namespace Platform::Language
 diff --git a/spellcheck/spellcheck_highlight_syntax_stub.cpp b/spellcheck/spellcheck_highlight_syntax_stub.cpp
 new file mode 100644
 index 0000000..6d22b54
