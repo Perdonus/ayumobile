@@ -4,7 +4,11 @@
 # For license and copyright information please follow this link:
 # https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
-add_executable(Telegram WIN32 MACOSX_BUNDLE)
+if (ANDROID AND QT_VERSION VERSION_GREATER_EQUAL 6.2)
+    qt_add_executable(Telegram MANUAL_FINALIZATION)
+else()
+    add_executable(Telegram WIN32 MACOSX_BUNDLE)
+endif()
 init_non_host_target(Telegram)
 
 add_subdirectory(lib_rpl)

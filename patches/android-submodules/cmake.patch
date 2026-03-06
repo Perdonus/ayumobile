@@ -40,19 +40,25 @@ index 9c2d02b..1845741 100644
  
      find_package(PkgConfig)
 diff --git a/init_target.cmake b/init_target.cmake
-index 9d4468e..6bc762e 100644
+index 9d4468e..c070cc2 100644
 --- a/init_target.cmake
 +++ b/init_target.cmake
-@@ -29,7 +29,7 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
+@@ -28,8 +28,13 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
      if (DESKTOP_APP_USE_PACKAGED)
          get_target_property(target_type ${target_name} TYPE)
-         if (QT_FOUND AND target_type STREQUAL "EXECUTABLE")
+-        if (QT_FOUND AND target_type STREQUAL "EXECUTABLE")
 -            if (QT_VERSION VERSION_GREATER_EQUAL 6.2)
-+            if (QT_VERSION VERSION_GREATER_EQUAL 6.2 AND NOT ANDROID)
++        if (QT_FOUND AND (
++                target_type STREQUAL "EXECUTABLE"
++                OR (ANDROID
++                    AND target_name STREQUAL "Telegram"
++                    AND target_type STREQUAL "MODULE_LIBRARY")))
++            if (QT_VERSION VERSION_GREATER_EQUAL 6.2
++                AND (NOT ANDROID OR target_name STREQUAL "Telegram"))
                  cmake_language(EVAL CODE "cmake_language(DEFER CALL qt_finalize_target ${target_name})")
              endif()
              if (LINUX)
-@@ -43,7 +43,7 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
+@@ -43,7 +48,7 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
              endif()
          endif()
      endif()
