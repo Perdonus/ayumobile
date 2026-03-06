@@ -260,3 +260,42 @@ index 0000000..082e7f4
 +    log
 +    android
 +)
+diff --git a/external/ffmpeg/CMakeLists.txt b/external/ffmpeg/CMakeLists.txt
+index 7854c9f..a699f9d 100644
+--- a/external/ffmpeg/CMakeLists.txt
++++ b/external/ffmpeg/CMakeLists.txt
+@@ -18,6 +18,15 @@ if (DESKTOP_APP_USE_PACKAGED OR LINUX)
+         libswscale
+     )
+     target_link_libraries(external_ffmpeg INTERFACE PkgConfig::DESKTOP_APP_FFMPEG)
++    if (DESKTOP_APP_FFMPEG_LIBRARY_DIRS)
++        set_property(TARGET external_ffmpeg APPEND PROPERTY
++            INTERFACE_LINK_DIRECTORIES "${DESKTOP_APP_FFMPEG_LIBRARY_DIRS}")
++        if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++            foreach(ffmpeg_lib_dir ${DESKTOP_APP_FFMPEG_LIBRARY_DIRS})
++                target_link_options(external_ffmpeg INTERFACE "-L${ffmpeg_lib_dir}")
++            endforeach()
++        endif()
++    endif()
+     return()
+ endif()
+ 
+diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
+index a201e92..54d34d6 100644
+--- a/external/rnnoise/CMakeLists.txt
++++ b/external/rnnoise/CMakeLists.txt
+@@ -12,6 +12,15 @@ if (DESKTOP_APP_USE_PACKAGED)
+     pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
+ 
+     target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
++    if (DESKTOP_APP_RNNOISE_LIBRARY_DIRS)
++        set_property(TARGET external_rnnoise APPEND PROPERTY
++            INTERFACE_LINK_DIRECTORIES "${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}")
++        if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++            foreach(rnnoise_lib_dir ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS})
++                target_link_options(external_rnnoise INTERFACE "-L${rnnoise_lib_dir}")
++            endforeach()
++        endif()
++    endif()
+     return()
+ endif()
