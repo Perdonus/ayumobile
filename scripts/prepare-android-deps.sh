@@ -32,6 +32,28 @@ msg() {
   echo "[DEPS] $*"
 }
 
+check_android_static_archive() {
+  local archive_path="$1"
+  local output_path="${DEPS_ROOT}/.archive-check/$(basename "${archive_path}").so"
+  local source_path="${DEPS_ROOT}/.archive-check/archive-check.c"
+
+  mkdir -p "$(dirname "${output_path}")"
+  cat > "${source_path}" <<'EOF'
+int archive_check_symbol(void) {
+  return 0;
+}
+EOF
+
+  "${CC}" \
+    --sysroot="${SYSROOT}" \
+    -shared \
+    -fPIC \
+    "${source_path}" \
+    "${archive_path}" \
+    -o "${output_path}" \
+    >/dev/null 2>&1
+}
+
 ensure_repo() {
   local name="$1"
   local url="$2"
@@ -153,15 +175,27 @@ build_openh264() {
 
 build_libvpx() {
   if [ -f "${PREFIX}/lib/libvpx.a" ] && [ -f "${PREFIX}/lib/pkgconfig/vpx.pc" ]; then
-    msg "libvpx already built"
-    return
+    if check_android_static_archive "${PREFIX}/lib/libvpx.a"; then
+      msg "libvpx already built"
+      return
+    fi
+    msg "libvpx cache is invalid, rebuilding"
+    rm -f "${PREFIX}/lib/libvpx.a" "${PREFIX}/lib/pkgconfig/vpx.pc"
   fi
   ensure_repo "libvpx" "https://chromium.googlesource.com/webm/libvpx" "12f3a2ac603e8f10742105519e0cd03c3b8f71dd"
   (
     cd "${SRC_ROOT}/libvpx"
     make clean || true
     make distclean || true
-    PATH="${WRAP_DIR}:${TOOLCHAIN}/bin:${PATH}" ./configure \
+    PATH="${WRAP_DIR}:${TOOLCHAIN}/bin:${PATH}" \
+    CC="${CC}" \
+    CXX="${CXX}" \
+    AR="${AR}" \
+    LD="${CXX}" \
+    RANLIB="${RANLIB}" \
+    STRIP="${STRIP}" \
+    AS="${CC}" \
+    ./configure \
       --target=arm64-android-gcc \
       --prefix="${PREFIX}" \
       --disable-examples \
@@ -170,6 +204,7 @@ build_libvpx() {
       --disable-docs \
       --disable-webm-io \
       --disable-install-bins \
+      --enable-pic \
       --enable-static \
       --disable-shared
     make -j"${NPROC}"
