@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 38ea4d1..e3a5853 100644
+index 38ea4d1245e0712e2d1e82f6f89ec01fd75997e0..31b8a45b9366a9caee57e4ad5f577a0d8f3927a3 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -247,6 +247,27 @@ if (DESKTOP_APP_DISABLE_X11_INTEGRATION)
+@@ -247,6 +247,35 @@ if (DESKTOP_APP_DISABLE_X11_INTEGRATION)
      )
  endif()
  
@@ -25,8 +25,483 @@ index 38ea4d1..e3a5853 100644
 +        ${win_platform_sources}
 +        base/file_lock_win.cpp
 +    )
++    nice_target_sources(lib_base ${src_loc}
++    PRIVATE
++        base/platform/android/base_file_utilities_android.cpp
++        base/platform/android/base_info_android.cpp
++        base/platform/android/base_info_android.h
++        base/platform/android/base_stub_android.cpp
++        base/platform/android/base_system_media_controls_android.cpp
++    )
 +endif()
 +
  target_include_directories(lib_base
  PUBLIC
      ${src_loc}
+diff --git a/base/platform/android/base_file_utilities_android.cpp b/base/platform/android/base_file_utilities_android.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..5d6a115ce94b1007db64358c56a555e7928a9f27
+--- /dev/null
++++ b/base/platform/android/base_file_utilities_android.cpp
+@@ -0,0 +1,71 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "base/platform/base_platform_file_utilities.h"
++
++#include <QtCore/QCoreApplication>
++#include <QtCore/QDir>
++#include <QtCore/QFile>
++#include <QtCore/QFileInfo>
++#include <QtCore/QUrl>
++#include <QtGui/QDesktopServices>
++
++#include <unistd.h>
++
++namespace base::Platform {
++
++void ShowInFolder(const QString &filepath) {
++	const auto info = QFileInfo(filepath);
++	const auto target = info.exists()
++		? info.absolutePath()
++		: filepath;
++	if (!target.isEmpty()) {
++		QDesktopServices::openUrl(QUrl::fromLocalFile(target));
++	}
++}
++
++QString FileNameFromUserString(QString name) {
++	return name;
++}
++
++bool DeleteDirectory(QString path) {
++	return QDir(path).removeRecursively();
++}
++
++void RemoveQuarantine(const QString &) {
++}
++
++QString CurrentExecutablePath(int argc, char *argv[]) {
++	const auto applicationPath = QCoreApplication::applicationFilePath();
++	if (!applicationPath.isEmpty()) {
++		return applicationPath;
++	} else if (argc > 0 && argv && argv[0]) {
++		return QFileInfo(QFile::decodeName(argv[0])).absoluteFilePath();
++	}
++	return QString();
++}
++
++QString BundledResourcesPath() {
++	return QCoreApplication::applicationDirPath();
++}
++
++bool RenameWithOverwrite(const QString &from, const QString &to) {
++	if (from == to) {
++		return true;
++	}
++	QFile::remove(to);
++	return QFile::rename(from, to);
++}
++
++void FlushFileData(QFile &file) {
++	file.flush();
++	const auto descriptor = file.handle();
++	if (descriptor >= 0) {
++		fsync(descriptor);
++	}
++}
++
++} // namespace base::Platform
+diff --git a/base/platform/android/base_info_android.cpp b/base/platform/android/base_info_android.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..0dc545607cbfefb7c645e3b31e04a604cfc6187a
+--- /dev/null
++++ b/base/platform/android/base_info_android.cpp
+@@ -0,0 +1,83 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "base/platform/android/base_info_android.h"
++
++#include "base/platform/base_platform_info.h"
++
++#include <QtCore/QDate>
++#include <QtCore/QJsonObject>
++#include <QtCore/QLocale>
++#include <QtCore/QSysInfo>
++
++namespace Platform {
++
++QString DeviceModelPretty() {
++	return base::Platform::FinalizeDeviceModel(QStringLiteral("Android"));
++}
++
++QString SystemVersionPretty() {
++	const auto pretty = QSysInfo::prettyProductName();
++	return pretty.isEmpty() ? QStringLiteral("Android") : pretty;
++}
++
++QString SystemCountry() {
++	const auto locale = QLocale::system().name();
++	const auto parts = locale.split(QLatin1Char('_'));
++	return (parts.size() > 1) ? parts.constLast() : QString();
++}
++
++QString SystemLanguage() {
++	const auto system = QLocale::system();
++	const auto languages = system.uiLanguages();
++	return languages.isEmpty()
++		? system.name().split(QLatin1Char('_')).value(0)
++		: languages.front();
++}
++
++QDate WhenSystemBecomesOutdated() {
++	return QDate();
++}
++
++int AutoUpdateVersion() {
++	return 4;
++}
++
++QString AutoUpdateKey() {
++	return QStringLiteral("android");
++}
++
++bool IsX11() {
++	return false;
++}
++
++bool IsWayland() {
++	return false;
++}
++
++bool IsXwayland() {
++	return false;
++}
++
++QString GetLibcName() {
++	return QStringLiteral("bionic");
++}
++
++QString GetLibcVersion() {
++	return QString();
++}
++
++QString GetWindowManager() {
++	return QString();
++}
++
++void Start(QJsonObject) {
++}
++
++void Finish() {
++}
++
++} // namespace Platform
+diff --git a/base/platform/android/base_info_android.h b/base/platform/android/base_info_android.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..9058092013a3e37d8244a962e1f4123a7d2a4384
+--- /dev/null
++++ b/base/platform/android/base_info_android.h
+@@ -0,0 +1,41 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#pragma once
++
++#include "base/platform/base_platform_info.h"
++
++namespace Platform {
++
++inline OutdateReason WhySystemBecomesOutdated() {
++	return OutdateReason::IsOld;
++}
++
++inline constexpr bool IsLinux() {
++	return false;
++}
++
++inline constexpr bool IsWindows() { return false; }
++inline constexpr bool IsWindows32Bit() { return false; }
++inline constexpr bool IsWindows64Bit() { return false; }
++inline constexpr bool IsWindowsARM64() { return false; }
++inline constexpr bool IsWindowsStoreBuild() { return false; }
++inline bool IsWindows7OrGreater() { return false; }
++inline bool IsWindows8OrGreater() { return false; }
++inline bool IsWindows8Point1OrGreater() { return false; }
++inline bool IsWindows10OrGreater() { return false; }
++inline bool IsWindows11OrGreater() { return false; }
++
++inline constexpr bool IsMac() { return false; }
++inline constexpr bool IsMacStoreBuild() { return false; }
++inline bool IsMac10_12OrGreater() { return false; }
++inline bool IsMac10_13OrGreater() { return false; }
++inline bool IsMac10_14OrGreater() { return false; }
++inline bool IsMac10_15OrGreater() { return false; }
++inline bool IsMac11_0OrGreater() { return false; }
++inline bool IsMac26_0OrGreater() { return false; }
++
++} // namespace Platform
+diff --git a/base/platform/android/base_stub_android.cpp b/base/platform/android/base_stub_android.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..d8e9eb4f0345c2f8269682669cf614d4c3d92abb
+--- /dev/null
++++ b/base/platform/android/base_stub_android.cpp
+@@ -0,0 +1,112 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "base/battery_saving.h"
++#include "base/platform/base_platform_global_shortcuts.h"
++#include "base/platform/base_platform_haptic.h"
++#include "base/platform/base_platform_last_input.h"
++#include "base/platform/base_platform_network_reachability.h"
++#include "base/platform/base_platform_power_save_blocker.h"
++#include "base/platform/base_platform_process.h"
++#include "base/platform/base_platform_url_scheme.h"
++#include "base/system_unlock.h"
++
++namespace base::Platform {
++
++std::optional<crl::time> LastUserInputTime() {
++	return std::nullopt;
++}
++
++void BlockPowerSave(
++		PowerSaveBlockType,
++		const QString &,
++		QPointer<QWindow>) {
++}
++
++void UnblockPowerSave(PowerSaveBlockType, QPointer<QWindow>) {
++}
++
++std::unique_ptr<NetworkReachability> NetworkReachability::Create() {
++	return nullptr;
++}
++
++namespace GlobalShortcuts {
++
++bool Available() {
++	return false;
++}
++
++bool Allowed() {
++	return false;
++}
++
++void Start(Fn<void(GlobalShortcutKeyGeneric, bool)>) {
++}
++
++void Stop() {
++}
++
++QString KeyName(GlobalShortcutKeyGeneric) {
++	return QString();
++}
++
++} // namespace GlobalShortcuts
++
++namespace {
++
++class BatterySavingStub final : public AbstractBatterySaving {
++public:
++	std::optional<bool> enabled() const override {
++		return std::nullopt;
++	}
++};
++
++} // namespace
++
++std::unique_ptr<AbstractBatterySaving> CreateBatterySaving(
++		Fn<void()>) {
++	return std::make_unique<BatterySavingStub>();
++}
++
++void ActivateProcessWindow(int64, WId) {
++}
++
++void ActivateThisProcessWindow(WId) {
++}
++
++bool CheckUrlScheme(const UrlSchemeDescriptor &) {
++	return true;
++}
++
++void RegisterUrlScheme(const UrlSchemeDescriptor &) {
++}
++
++void UnregisterUrlScheme(const UrlSchemeDescriptor &) {
++}
++
++void Haptic() {
++}
++
++bool IsSwipeBackEnabled() {
++	return true;
++}
++
++} // namespace base::Platform
++
++namespace base {
++
++rpl::producer<SystemUnlockAvailability> SystemUnlockStatus(bool) {
++	return rpl::single(SystemUnlockAvailability{ .known = true });
++}
++
++void SuggestSystemUnlock(
++		not_null<QWidget*>,
++		const QString &,
++		Fn<void(SystemUnlockResult)> done) {
++	done(SystemUnlockResult::Cancelled);
++}
++
++} // namespace base
+diff --git a/base/platform/android/base_system_media_controls_android.cpp b/base/platform/android/base_system_media_controls_android.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..1ad360b585b7d9645fe784f10f275b03e7f64552
+--- /dev/null
++++ b/base/platform/android/base_system_media_controls_android.cpp
+@@ -0,0 +1,117 @@
++// This file is part of Desktop App Toolkit,
++// a set of libraries for developing nice desktop applications.
++//
++// For license and copyright information please follow this link:
++// https://github.com/desktop-app/legal/blob/master/LEGAL
++//
++#include "base/platform/base_platform_system_media_controls.h"
++
++namespace base::Platform {
++namespace {
++
++struct EmptySystemMediaControlsPrivate {
++	rpl::event_stream<SystemMediaControls::Command> commandRequests;
++	rpl::event_stream<float64> seekRequests;
++	rpl::event_stream<float64> volumeChangeRequests;
++	rpl::event_stream<> updatePositionRequests;
++};
++
++} // namespace
++
++struct SystemMediaControls::Private : EmptySystemMediaControlsPrivate {
++};
++
++SystemMediaControls::SystemMediaControls()
++: _private(std::make_unique<Private>()) {
++}
++
++SystemMediaControls::~SystemMediaControls() = default;
++
++bool SystemMediaControls::init() {
++	return false;
++}
++
++bool SystemMediaControls::seekingSupported() const {
++	return false;
++}
++
++bool SystemMediaControls::volumeSupported() const {
++	return false;
++}
++
++void SystemMediaControls::setApplicationName(const QString &) {
++}
++
++void SystemMediaControls::setEnabled(bool) {
++}
++
++void SystemMediaControls::setIsNextEnabled(bool) {
++}
++
++void SystemMediaControls::setIsPreviousEnabled(bool) {
++}
++
++void SystemMediaControls::setIsPlayPauseEnabled(bool) {
++}
++
++void SystemMediaControls::setIsStopEnabled(bool) {
++}
++
++void SystemMediaControls::setPlaybackStatus(PlaybackStatus) {
++}
++
++void SystemMediaControls::setLoopStatus(LoopStatus) {
++}
++
++void SystemMediaControls::setShuffle(bool) {
++}
++
++void SystemMediaControls::setTitle(const QString &) {
++}
++
++void SystemMediaControls::setArtist(const QString &) {
++}
++
++void SystemMediaControls::setThumbnail(const QImage &) {
++}
++
++void SystemMediaControls::setDuration(int) {
++}
++
++void SystemMediaControls::setPosition(int) {
++}
++
++void SystemMediaControls::setVolume(float64) {
++}
++
++void SystemMediaControls::clearThumbnail() {
++}
++
++void SystemMediaControls::clearMetadata() {
++}
++
++void SystemMediaControls::updateDisplay() {
++}
++
++auto SystemMediaControls::commandRequests() const
++-> rpl::producer<SystemMediaControls::Command> {
++	return _private->commandRequests.events();
++}
++
++rpl::producer<float64> SystemMediaControls::seekRequests() const {
++	return _private->seekRequests.events();
++}
++
++rpl::producer<float64> SystemMediaControls::volumeChangeRequests() const {
++	return _private->volumeChangeRequests.events();
++}
++
++rpl::producer<> SystemMediaControls::updatePositionRequests() const {
++	return _private->updatePositionRequests.events();
++}
++
++bool SystemMediaControls::Supported() {
++	return false;
++}
++
++} // namespace base::Platform
+diff --git a/base/platform/base_platform_info.h b/base/platform/base_platform_info.h
+index 7b297213a6e657c4c1fe61c3c07b64eb79fd5fa0..f81e4794524a21ca73b126797f883379763d68b8 100644
+--- a/base/platform/base_platform_info.h
++++ b/base/platform/base_platform_info.h
+@@ -79,6 +79,8 @@ void Finish();
+ #include "base/platform/win/base_info_win.h"
+ #elif defined Q_OS_MAC // Q_OS_WIN
+ #include "base/platform/mac/base_info_mac.h"
++#elif defined Q_OS_ANDROID // Q_OS_WIN || Q_OS_MAC
++#include "base/platform/android/base_info_android.h"
+ #else // Q_OS_WIN || Q_OS_MAC
+ #include "base/platform/linux/base_info_linux.h"
+ #endif // else for Q_OS_WIN || Q_OS_MAC

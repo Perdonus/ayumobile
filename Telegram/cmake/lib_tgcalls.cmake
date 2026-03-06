@@ -210,8 +210,9 @@ PRIVATE
     desktop-app::external_webrtc
     desktop-app::external_ffmpeg
     desktop-app::external_openssl
-    desktop-app::external_rnnoise
     desktop-app::external_zlib
+PUBLIC
+    desktop-app::external_rnnoise
 )
 
 target_compile_definitions(lib_tgcalls
