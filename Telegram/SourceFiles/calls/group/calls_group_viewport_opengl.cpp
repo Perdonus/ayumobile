@@ -1078,7 +1078,7 @@ void Viewport::RendererGL::uploadTexture(
 	const auto height = size.height();
 	auto uploadData = data;
 	QByteArray packed;
-#if defined(GL_UNPACK_ROW_LENGTH)
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(Q_OS_ANDROID)
 	f.glPixelStorei(GL_UNPACK_ROW_LENGTH, stride);
 #else
 	if (stride != width) {
@@ -1117,7 +1117,7 @@ void Viewport::RendererGL::uploadTexture(
 			GL_UNSIGNED_BYTE,
 			uploadData);
 	}
-#if defined(GL_UNPACK_ROW_LENGTH)
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(Q_OS_ANDROID)
 	f.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
 }

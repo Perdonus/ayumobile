@@ -635,7 +635,7 @@ void OverlayWidget::RendererGL::uploadTexture(
 	const auto height = size.height();
 	auto uploadData = data;
 	QByteArray packed;
-#if defined(GL_UNPACK_ROW_LENGTH)
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(Q_OS_ANDROID)
 	_f->glPixelStorei(GL_UNPACK_ROW_LENGTH, stride);
 #else
 	if (stride != width) {
@@ -674,7 +674,7 @@ void OverlayWidget::RendererGL::uploadTexture(
 			GL_UNSIGNED_BYTE,
 			uploadData);
 	}
-#if defined(GL_UNPACK_ROW_LENGTH)
+#if defined(GL_UNPACK_ROW_LENGTH) && !defined(Q_OS_ANDROID)
 	_f->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
 }
