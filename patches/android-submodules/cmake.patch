@@ -43,7 +43,7 @@ diff --git a/init_target.cmake b/init_target.cmake
 index 9d4468e..c070cc2 100644
 --- a/init_target.cmake
 +++ b/init_target.cmake
-@@ -28,8 +28,13 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
+@@ -28,7 +28,12 @@ function(init_target target_name) # init_target(my_target [cxx_std_..] folder_na
      if (DESKTOP_APP_USE_PACKAGED)
          get_target_property(target_type ${target_name} TYPE)
 -        if (QT_FOUND AND target_type STREQUAL "EXECUTABLE")
@@ -290,7 +290,7 @@ diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
 index a201e92..54d34d6 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -12,6 +12,15 @@ if (DESKTOP_APP_USE_PACKAGED)
+@@ -12,5 +12,14 @@ if (DESKTOP_APP_USE_PACKAGED)
      pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
  
      target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
