@@ -39,71 +39,20 @@ index a054a58..0d7d8bf 100644
      target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
      return()
 diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
-index a201e92..cab54ad 100644
+index a201e92..54d34d6 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -5,13 +5,61 @@
- # https://github.com/desktop-app/legal/blob/master/LEGAL
+@@ -12,6 +12,15 @@ if (DESKTOP_APP_USE_PACKAGED)
+     pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
  
- if (DESKTOP_APP_USE_PACKAGED)
--    add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)
--    add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
-+    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
-+        add_library(external_rnnoise STATIC IMPORTED GLOBAL)
-+        add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
- 
--    find_package(PkgConfig REQUIRED)
--    pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
-+        find_package(PkgConfig REQUIRED)
-+        pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
-+        pkg_get_variable(DESKTOP_APP_RNNOISE_LIBDIR rnnoise libdir)
-+        pkg_get_variable(DESKTOP_APP_RNNOISE_INCLUDEDIR rnnoise includedir)
- 
--    target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
-+        foreach (_candidate IN LISTS
-+            DESKTOP_APP_RNNOISE_LINK_LIBRARIES
-+            DESKTOP_APP_RNNOISE_LIBRARIES)
-+            if (IS_ABSOLUTE "${_candidate}" AND EXISTS "${_candidate}")
-+                set(DESKTOP_APP_RNNOISE_LIBRARY "${_candidate}")
-+                break()
-+            endif()
-+        endforeach()
-+
-+        if (NOT DESKTOP_APP_RNNOISE_LIBRARY)
-+            find_library(
-+                DESKTOP_APP_RNNOISE_LIBRARY
-+                NAMES rnnoise librnnoise.a
-+                PATHS
-+                    ${DESKTOP_APP_RNNOISE_LIBDIR}
-+                    ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}
-+                NO_DEFAULT_PATH
-+            )
-+        endif()
-+        if (NOT DESKTOP_APP_RNNOISE_LIBRARY)
-+            message(FATAL_ERROR "Could not resolve rnnoise static library.")
-+        endif()
-+        if (NOT DESKTOP_APP_RNNOISE_INCLUDE_DIRS AND DESKTOP_APP_RNNOISE_INCLUDEDIR)
-+            set(DESKTOP_APP_RNNOISE_INCLUDE_DIRS "${DESKTOP_APP_RNNOISE_INCLUDEDIR}")
-+        endif()
-+
-+        target_include_directories(external_rnnoise SYSTEM
-+        INTERFACE
-+            ${DESKTOP_APP_RNNOISE_INCLUDE_DIRS}
-+        )
-+        set_target_properties(external_rnnoise PROPERTIES
-+            IMPORTED_LOCATION "${DESKTOP_APP_RNNOISE_LIBRARY}"
-+        )
-+    else()
-+        add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)
-+        add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
-+
-+        find_package(PkgConfig REQUIRED)
-+        pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
-+
-+        target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
-+        if (DESKTOP_APP_RNNOISE_LIBRARY_DIRS)
-+            set_property(TARGET external_rnnoise APPEND PROPERTY
-+                INTERFACE_LINK_DIRECTORIES "${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}")
+     target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
++    if (DESKTOP_APP_RNNOISE_LIBRARY_DIRS)
++        set_property(TARGET external_rnnoise APPEND PROPERTY
++            INTERFACE_LINK_DIRECTORIES "${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}")
++        if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++            foreach(rnnoise_lib_dir ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS})
++                target_link_options(external_rnnoise INTERFACE "-L${rnnoise_lib_dir}")
++            endforeach()
 +        endif()
 +    endif()
      return()
@@ -226,6 +175,42 @@ index 775c8e6..126be0a 100644
  elseif (LINUX)
      include(cmake/options_linux.cmake)
  else()
+diff --git a/options_android.cmake b/options_android.cmake
+new file mode 100644
+index 0000000..082e7f4
+--- /dev/null
++++ b/options_android.cmake
+@@ -0,0 +1,30 @@
++# This file is part of Desktop App Toolkit,
++# a set of libraries for developing nice desktop applications.
++#
++# For license and copyright information please follow this link:
++# https://github.com/desktop-app/legal/blob/master/LEGAL
++
++target_compile_options(common_options
++INTERFACE
++    -fPIC
++    -pipe
++    $<$<NOT:$<CONFIG:Debug>>:-fno-strict-aliasing>
++)
++
++target_compile_options_if_exists(common_options
++INTERFACE
++    -Wall
++    -Wextra
++    -Wno-unused-parameter
++    -Wno-switch
++    -Wno-maybe-uninitialized
++    -Wno-missing-field-initializers
++    -Wno-sign-compare
++    -Wno-deprecated
++)
++
++target_link_libraries(common_options
++INTERFACE
++    log
++    android
++)
 diff --git a/validate_special_target.cmake b/validate_special_target.cmake
 index 57e0950..16f7674 100644
 --- a/validate_special_target.cmake
