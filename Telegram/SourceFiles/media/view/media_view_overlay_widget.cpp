@@ -5148,6 +5148,13 @@ void OverlayWidget::validatePhotoCurrentImage() {
 
 Ui::GL::ChosenRenderer OverlayWidget::chooseRenderer(
 		Ui::GL::Backend backend) {
+#ifdef Q_OS_ANDROID
+	_opengl = false;
+	return {
+		.renderer = std::make_unique<RendererSW>(this),
+		.backend = Ui::GL::Backend::Raster,
+	};
+#else // Q_OS_ANDROID
 	_opengl = (backend == Ui::GL::Backend::OpenGL);
 	return {
 		.renderer = (_opengl
@@ -5156,6 +5163,7 @@ Ui::GL::ChosenRenderer OverlayWidget::chooseRenderer(
 			: std::make_unique<RendererSW>(this)),
 		.backend = backend,
 	};
+#endif // Q_OS_ANDROID
 }
 
 void OverlayWidget::paint(not_null<Renderer*> renderer) {

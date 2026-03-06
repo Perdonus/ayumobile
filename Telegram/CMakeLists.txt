@@ -1984,6 +1984,12 @@ if (ANDROID)
     remove_target_sources(Telegram ${src_loc}
         ${telegram_non_android_platform_relative}
     )
+    remove_target_sources(Telegram ${src_loc}
+        media/view/media_view_overlay_opengl.cpp
+        media/view/media_view_overlay_opengl.h
+        media/view/media_view_pip_opengl.cpp
+        media/view/media_view_pip_opengl.h
+    )
 endif()
 
 if (NOT build_winstore)

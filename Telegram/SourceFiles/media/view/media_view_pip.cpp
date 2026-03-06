@@ -1409,6 +1409,14 @@ QImage Pip::currentVideoFrameImage() const {
 
 Ui::GL::ChosenRenderer Pip::chooseRenderer(
 		Ui::GL::Capabilities capabilities) {
+#ifdef Q_OS_ANDROID
+	_opengl = false;
+	LOG(("OpenGL: 0 (PipPanel)"));
+	return {
+		.renderer = std::make_unique<RendererSW>(this),
+		.backend = Ui::GL::Backend::Raster,
+	};
+#else // Q_OS_ANDROID
 	const auto use = Platform::IsMac()
 		? true
 		: capabilities.transparency;
@@ -1424,6 +1432,7 @@ Ui::GL::ChosenRenderer Pip::chooseRenderer(
 		.renderer = std::make_unique<RendererSW>(this),
 		.backend = Ui::GL::Backend::Raster,
 	};
+#endif // Q_OS_ANDROID
 }
 
 void Pip::paint(not_null<Renderer*> renderer) const {
