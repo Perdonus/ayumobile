@@ -171,7 +171,7 @@ void PremultiplyLine(uchar *dst, const uchar *src, int intsCount) {
 		}
 		return false;
 	};
-	#if defined Q_OS_WIN || defined Q_OS_MAC || defined Q_OS_ANDROID
+	#if defined Q_OS_WIN || defined Q_OS_MAC
 		const auto list = std::array{
 	#ifdef Q_OS_WIN
 			AV_PIX_FMT_D3D11,
@@ -179,11 +179,10 @@ void PremultiplyLine(uchar *dst, const uchar *src, int intsCount) {
 			AV_PIX_FMT_CUDA,
 	#elif defined Q_OS_MAC // Q_OS_WIN
 			AV_PIX_FMT_VIDEOTOOLBOX,
-	#elif defined Q_OS_ANDROID // Q_OS_MAC
-	#else // Q_OS_WIN || Q_OS_MAC || Q_OS_ANDROID
-			AV_PIX_FMT_NONE,
 	#endif // Q_OS_WIN || Q_OS_MAC
 		};
+	#elif defined Q_OS_ANDROID
+		const auto list = std::array<AVPixelFormat, 0>{};
 	#else // Q_OS_WIN || Q_OS_MAC || Q_OS_ANDROID
 		static const auto list = CheckHwLibs();
 	#endif // !Q_OS_WIN && !Q_OS_MAC && !Q_OS_ANDROID
@@ -200,9 +199,6 @@ void PremultiplyLine(uchar *dst, const uchar *src, int intsCount) {
 	#elif defined Q_OS_MAC // Q_OS_WIN
 				case AV_PIX_FMT_VIDEOTOOLBOX:
 					return AV_HWDEVICE_TYPE_VIDEOTOOLBOX;
-	#elif defined Q_OS_ANDROID // Q_OS_MAC
-				case AV_PIX_FMT_NONE:
-					return AV_HWDEVICE_TYPE_NONE;
 	#else // Q_OS_WIN || Q_OS_MAC
 				case AV_PIX_FMT_VAAPI: return AV_HWDEVICE_TYPE_VAAPI;
 				case AV_PIX_FMT_VDPAU: return AV_HWDEVICE_TYPE_VDPAU;
