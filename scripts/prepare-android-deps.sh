@@ -64,6 +64,39 @@ archive_has_symbol() {
     | grep -Eq "[[:space:]]${symbol}$"
 }
 
+check_rnnoise_api_link() {
+  local output_path="${DEPS_ROOT}/.archive-check/rnnoise-api-check.so"
+  local source_path="${DEPS_ROOT}/.archive-check/rnnoise-api-check.c"
+
+  mkdir -p "$(dirname "${output_path}")"
+  cat > "${source_path}" <<'EOF'
+#include <rnnoise.h>
+
+int archive_check_symbol(void) {
+  float frame[480] = { 0 };
+  DenoiseState *state = rnnoise_create(0);
+  if (!state) {
+    return 1;
+  }
+  rnnoise_process_frame(state, frame, frame);
+  rnnoise_destroy(state);
+  return 0;
+}
+EOF
+
+  "${CC}" \
+    --sysroot="${SYSROOT}" \
+    -shared \
+    -fPIC \
+    -I"${PREFIX}/include" \
+    "${source_path}" \
+    "${PREFIX}/lib/librnnoise.a" \
+    "${PREFIX}/lib/libopus.a" \
+    -lm \
+    -o "${output_path}" \
+    >/dev/null 2>&1
+}
+
 localize_rnnoise_archive_symbols() {
   local archive_path="${PREFIX}/lib/librnnoise.a"
   local work_dir="${DEPS_ROOT}/.archive-fix/rnnoise"
@@ -96,10 +129,7 @@ check_rnnoise_archive() {
   archive_has_symbol "${archive_path}" "rnnoise_process_frame" || return 1
   archive_has_symbol "${archive_path}" "rnnoise_destroy" || return 1
 
-  check_android_link \
-    "rnnoise-opus-check" \
-    "${archive_path}" \
-    "${PREFIX}/lib/libopus.a"
+  check_rnnoise_api_link
 }
 
 ensure_repo() {
