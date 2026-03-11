@@ -39,18 +39,17 @@ index a054a58..0d7d8bf 100644
      target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
      return()
 diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
-index a201e92..3f2c8f6 100644
+index a201e92..65ae5a8 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -11,7 +11,28 @@ if (DESKTOP_APP_USE_PACKAGED)
+@@ -11,7 +11,27 @@ if (DESKTOP_APP_USE_PACKAGED)
      find_package(PkgConfig REQUIRED)
      pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
  
 +    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
 +        find_library(DESKTOP_APP_RNNOISE_STATIC_LIBRARY
 +            NAMES rnnoise librnnoise.a
-+            PATHS ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}
-+            NO_DEFAULT_PATH)
++            PATHS ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS})
 +        if (NOT DESKTOP_APP_RNNOISE_STATIC_LIBRARY)
 +            message(FATAL_ERROR "Failed to find packaged rnnoise static library for Android.")
 +        endif()
