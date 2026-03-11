@@ -2021,7 +2021,7 @@ void FastShareMessageToSelf(
 	auto sendAction = Api::SendAction(self->owner().history(self));
 	sendAction.clearDraft = false;
 	show->session().api().forwardMessages(
-		Data::ResolvedForwardDraft{ .items = {item} },
+		Data::ResolvedForwardDraft({ item }),
 		std::move(sendAction),
 		[=] {
 			auto phrase = rpl::variable<TextWithEntities>(

@@ -400,7 +400,13 @@ struct ResolvedForwardDraft {
 	HistoryItemsList items;
 	ForwardOptions options = ForwardOptions::PreserveInfo;
 
-	~ResolvedForwardDraft() = default;
+	ResolvedForwardDraft() = default;
+	ResolvedForwardDraft(
+		HistoryItemsList items,
+		ForwardOptions options = ForwardOptions::PreserveInfo)
+	: items(std::move(items))
+	, options(options) {
+	}
 };
 
 } // namespace Data

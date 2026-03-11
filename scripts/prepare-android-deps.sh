@@ -55,6 +55,15 @@ EOF
     >/dev/null 2>&1
 }
 
+archive_has_symbol() {
+  local archive_path="$1"
+  local symbol="$2"
+
+  [ -f "${archive_path}" ] || return 1
+  "${NM}" -g --defined-only "${archive_path}" \
+    | grep -Eq "[[:space:]]${symbol}$"
+}
+
 localize_rnnoise_archive_symbols() {
   local archive_path="${PREFIX}/lib/librnnoise.a"
   local work_dir="${DEPS_ROOT}/.archive-fix/rnnoise"
@@ -78,6 +87,19 @@ localize_rnnoise_archive_symbols() {
     "${AR}" crs "${archive_path}" "${members[@]}"
   )
   "${RANLIB}" "${archive_path}"
+}
+
+check_rnnoise_archive() {
+  local archive_path="${PREFIX}/lib/librnnoise.a"
+
+  archive_has_symbol "${archive_path}" "rnnoise_create" || return 1
+  archive_has_symbol "${archive_path}" "rnnoise_process_frame" || return 1
+  archive_has_symbol "${archive_path}" "rnnoise_destroy" || return 1
+
+  check_android_link \
+    "rnnoise-opus-check" \
+    "${archive_path}" \
+    "${PREFIX}/lib/libopus.a"
 }
 
 ensure_repo() {
@@ -240,10 +262,7 @@ build_libvpx() {
 
 build_rnnoise() {
   if [ -f "${PREFIX}/lib/librnnoise.a" ] && [ -f "${PREFIX}/lib/pkgconfig/rnnoise.pc" ]; then
-    if check_android_link \
-      "rnnoise-opus-check" \
-      "${PREFIX}/lib/librnnoise.a" \
-      "${PREFIX}/lib/libopus.a"; then
+    if check_rnnoise_archive; then
       msg "rnnoise already built"
       return
     fi
@@ -268,10 +287,7 @@ build_rnnoise() {
     make install
   )
   localize_rnnoise_archive_symbols
-  check_android_link \
-    "rnnoise-opus-check" \
-    "${PREFIX}/lib/librnnoise.a" \
-    "${PREFIX}/lib/libopus.a"
+  check_rnnoise_archive
 }
 
 build_openssl() {

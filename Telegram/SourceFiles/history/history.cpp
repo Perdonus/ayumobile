@@ -456,10 +456,9 @@ const Data::ForwardDraft &History::forwardDraft(
 
 Data::ResolvedForwardDraft History::resolveForwardDraft(
 		const Data::ForwardDraft &draft) const {
-	return Data::ResolvedForwardDraft{
-		.items = owner().idsToItems(draft.ids),
-		.options = draft.options,
-	};
+	return Data::ResolvedForwardDraft(
+		owner().idsToItems(draft.ids),
+		draft.options);
 }
 
 Data::ResolvedForwardDraft History::resolveForwardDraft(

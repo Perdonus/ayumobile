@@ -403,12 +403,13 @@ void SendSuggest(
 	}
 
 	show->session().api().sendAction(action);
-	show->session().api().forwardMessages({
-		.items = { item },
-		.options = (isForward
-			? Data::ForwardOptions::PreserveInfo
-			: Data::ForwardOptions::NoSenderNames),
-		}, action);
+	show->session().api().forwardMessages(
+		Data::ResolvedForwardDraft(
+			{ item },
+			(isForward
+				? Data::ForwardOptions::PreserveInfo
+				: Data::ForwardOptions::NoSenderNames)),
+		action);
 	if (const auto onstack = done) {
 		onstack();
 	}
