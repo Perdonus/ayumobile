@@ -215,6 +215,42 @@ index 775c8e6..126be0a 100644
  elseif (LINUX)
      include(cmake/options_linux.cmake)
  else()
+diff --git a/options_android.cmake b/options_android.cmake
+new file mode 100644
+index 0000000..082e7f4
+--- /dev/null
++++ b/options_android.cmake
+@@ -0,0 +1,30 @@
++# This file is part of Desktop App Toolkit,
++# a set of libraries for developing nice desktop applications.
++#
++# For license and copyright information please follow this link:
++# https://github.com/desktop-app/legal/blob/master/LEGAL
++
++target_compile_options(common_options
++INTERFACE
++    -fPIC
++    -pipe
++    $<$<NOT:$<CONFIG:Debug>>:-fno-strict-aliasing>
++)
++
++target_compile_options_if_exists(common_options
++INTERFACE
++    -Wall
++    -Wextra
++    -Wno-unused-parameter
++    -Wno-switch
++    -Wno-maybe-uninitialized
++    -Wno-missing-field-initializers
++    -Wno-sign-compare
++    -Wno-deprecated
++)
++
++target_link_libraries(common_options
++INTERFACE
++    log
++    android
++)
 diff --git a/validate_special_target.cmake b/validate_special_target.cmake
 index 57e0950..16f7674 100644
 --- a/validate_special_target.cmake
