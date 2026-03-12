@@ -294,6 +294,12 @@ jobs:
               end=$((config_line + 40))
               sed -n "${start},${end}p" "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-config-context.log" || true
             fi
+            if [ -f out/android-arm64-native/CMakeFiles/CMakeError.log ]; then
+              cp out/android-arm64-native/CMakeFiles/CMakeError.log "$GITHUB_WORKSPACE/cmake-error.log" || true
+            fi
+            if [ -f out/android-arm64-native/CMakeFiles/CMakeOutput.log ]; then
+              cp out/android-arm64-native/CMakeFiles/CMakeOutput.log "$GITHUB_WORKSPACE/cmake-output.log" || true
+            fi
             if [ -s "$GITHUB_WORKSPACE/build-android-tail.log" ]; then
               tail_payload="$(
                 python3 -c 'from pathlib import Path; text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")'
@@ -322,6 +328,13 @@ jobs:
               )"
               echo "::error title=build-config-context::$config_payload"
             fi
+            if [ -s "$GITHUB_WORKSPACE/cmake-error.log" ]; then
+              tail -n 120 "$GITHUB_WORKSPACE/cmake-error.log" > "$GITHUB_WORKSPACE/cmake-error-tail.log" || true
+              cmake_error_payload="$(
+                python3 -c 'from pathlib import Path; text = Path("cmake-error-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")'
+              )"
+              echo "::error title=cmake-error-log::$cmake_error_payload"
+            fi
             {
               echo "### Build APK failed"
               echo
@@ -346,6 +359,14 @@ jobs:
                 cat "$GITHUB_WORKSPACE/build-config-context.log"
                 echo '```'
               fi
+              if [ -s "$GITHUB_WORKSPACE/cmake-error.log" ]; then
+                echo
+                echo "CMakeError.log:"
+                echo
+                echo '```text'
+                cat "$GITHUB_WORKSPACE/cmake-error.log"
+                echo '```'
+              fi
             } >> "$GITHUB_STEP_SUMMARY" || true
             echo "::error::Build APK failed. Check artifact ayumobile-build-log."
             exit "$build_rc"
@@ -363,6 +384,9 @@ jobs:
             build-android-errors-tail.log
             build-config-context.log
             build-config-context-tail.log
+            cmake-error.log
+            cmake-error-tail.log
+            cmake-output.log
           if-no-files-found: ignore
 
       - name: Save ccache
