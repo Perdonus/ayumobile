@@ -48,12 +48,47 @@ jobs:
       ANDROID_NDK_VERSION: "26.1.10909125"
       CI_CACHE_ROOT: ${{ github.workspace }}/.ci-cache
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 1
-          ref: ${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || github.event_name == 'check_run' && github.event.check_run.head_sha || github.sha }}
+      - name: Checkout (git retry)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || github.event_name == 'check_run' && github.event.check_run.head_sha || github.sha }}
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -euxo pipefail
+          rm -rf .git
+          git init .
+          git config gc.auto 0
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          fetched=0
+          for attempt in 1 2 3; do
+            if [ -n "${TARGET_SHA}" ] && git fetch --depth=1 origin "${TARGET_SHA}"; then
+              fetched=1
+              break
+            fi
+            echo "fetch by sha failed (attempt ${attempt}), retrying..." >&2
+            sleep 15
+          done
+
+          if [ "${fetched}" -ne 1 ]; then
+            fallback_branch="${TARGET_BRANCH:-dev}"
+            for attempt in 1 2 3; do
+              if git fetch --depth=1 origin "${fallback_branch}"; then
+                fetched=1
+                break
+              fi
+              echo "fetch by branch failed (attempt ${attempt}), retrying..." >&2
+              sleep 15
+            done
+          fi
+
+          if [ "${fetched}" -ne 1 ]; then
+            echo "Unable to fetch repository after retries." >&2
+            exit 1
+          fi
+
+          git checkout --detach FETCH_HEAD
+          git log --oneline -n 1
 
       - name: Init submodules (retry)
         run: |
