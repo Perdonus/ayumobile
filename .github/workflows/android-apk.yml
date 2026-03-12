@@ -51,9 +51,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
-          fetch-depth: 0
+          submodules: false
+          fetch-depth: 1
           ref: ${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || github.event_name == 'check_run' && github.event.check_run.head_sha || github.sha }}
+
+      - name: Init submodules (retry)
+        run: |
+          set -euxo pipefail
+          git submodule sync --recursive
+          for attempt in 1 2 3; do
+            if git -c submodule.fetchJobs=8 submodule update --init --recursive; then
+              exit 0
+            fi
+            echo "submodule update failed (attempt ${attempt}), retrying..." >&2
+            sleep 15
+          done
+          echo "submodule update failed after retries" >&2
+          git submodule status --recursive || true
+          exit 1
 
       - name: Setup Java
         uses: actions/setup-java@v4
