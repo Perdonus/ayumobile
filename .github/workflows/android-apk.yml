@@ -193,9 +193,6 @@ jobs:
           test -f "$QT_ANDROID_PATH/lib/cmake/Qt6/qt.toolchain.cmake"
           test -f "$QT_ANDROID_PATH/lib/cmake/Qt6/Qt6Config.cmake"
 
-          git submodule sync --recursive
-          git submodule update --init --recursive
-
           chmod +x scripts/apply-android-submodule-patches.sh
           ./scripts/apply-android-submodule-patches.sh
 
