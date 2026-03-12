@@ -139,6 +139,18 @@ ensure_repo() {
   local with_submodules="${4:-0}"
   local repo_dir="${SRC_ROOT}/${name}"
 
+  if [ -d "${repo_dir}" ] && [ ! -d "${repo_dir}/.git" ]; then
+    msg "reset broken cache for ${name} (missing .git)"
+    rm -rf "${repo_dir}"
+  fi
+
+  if [ -d "${repo_dir}/.git" ]; then
+    if ! git_no_proxy -C "${repo_dir}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      msg "reset broken cache for ${name} (invalid git repo)"
+      rm -rf "${repo_dir}"
+    fi
+  fi
+
   if [ ! -d "${repo_dir}/.git" ]; then
     msg "clone ${name}"
     git_no_proxy clone "${url}" "${repo_dir}"
