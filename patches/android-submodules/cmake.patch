@@ -39,10 +39,10 @@ index a054a58..0d7d8bf 100644
      target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
      return()
 diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
-index a201e92..f1322ba 100644
+index a201e92..7df909c 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -11,7 +11,55 @@ if (DESKTOP_APP_USE_PACKAGED)
+@@ -11,7 +11,58 @@ if (DESKTOP_APP_USE_PACKAGED)
      find_package(PkgConfig REQUIRED)
      pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
  
@@ -102,16 +102,23 @@ index a201e92..f1322ba 100644
  endif()
  
 diff --git a/external/webrtc/CMakeLists.txt b/external/webrtc/CMakeLists.txt
-index c4a0530..0f7ad43 100644
+index c4a0530..19fe25c 100644
 --- a/external/webrtc/CMakeLists.txt
 +++ b/external/webrtc/CMakeLists.txt
-@@ -10,6 +10,10 @@ add_library(desktop-app::external_webrtc ALIAS external_webrtc)
+@@ -9,7 +9,16 @@ add_library(desktop-app::external_webrtc ALIAS external_webrtc)
+ 
  if (DESKTOP_APP_USE_PACKAGED OR LINUX)
      find_package(tg_owt REQUIRED)
-     target_link_libraries(external_webrtc INTERFACE tg_owt::tg_owt)
+-    target_link_libraries(external_webrtc INTERFACE tg_owt::tg_owt)
 +    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
 +        target_link_libraries(external_webrtc INTERFACE
-+            desktop-app::external_rnnoise)
++            -Wl,--start-group
++            tg_owt::tg_owt
++            desktop-app::external_rnnoise
++            -Wl,--end-group
++        )
++    else()
++        target_link_libraries(external_webrtc INTERFACE tg_owt::tg_owt)
 +    endif()
      return()
  endif()
@@ -233,42 +240,6 @@ index 775c8e6..126be0a 100644
  elseif (LINUX)
      include(cmake/options_linux.cmake)
  else()
-diff --git a/options_android.cmake b/options_android.cmake
-new file mode 100644
-index 0000000..082e7f4
---- /dev/null
-+++ b/options_android.cmake
-@@ -0,0 +1,30 @@
-+# This file is part of Desktop App Toolkit,
-+# a set of libraries for developing nice desktop applications.
-+#
-+# For license and copyright information please follow this link:
-+# https://github.com/desktop-app/legal/blob/master/LEGAL
-+
-+target_compile_options(common_options
-+INTERFACE
-+    -fPIC
-+    -pipe
-+    $<$<NOT:$<CONFIG:Debug>>:-fno-strict-aliasing>
-+)
-+
-+target_compile_options_if_exists(common_options
-+INTERFACE
-+    -Wall
-+    -Wextra
-+    -Wno-unused-parameter
-+    -Wno-switch
-+    -Wno-maybe-uninitialized
-+    -Wno-missing-field-initializers
-+    -Wno-sign-compare
-+    -Wno-deprecated
-+)
-+
-+target_link_libraries(common_options
-+INTERFACE
-+    log
-+    android
-+)
 diff --git a/validate_special_target.cmake b/validate_special_target.cmake
 index 57e0950..16f7674 100644
 --- a/validate_special_target.cmake
