@@ -289,6 +289,15 @@ jobs:
           cat "$CONFIGURE_LOG" >> "$BUILD_LOG"
 
           if [ "$configure_rc" -eq 0 ]; then
+            grep -nE "LINK_LIBRARIES = .*librnnoise\\.a|LINK_LIBRARIES = .*libtg_owt\\.a" \
+              out/android-arm64-native/build.ninja \
+              > "$GITHUB_WORKSPACE/rnnoise-link-line.log" || true
+            if [ -s "$GITHUB_WORKSPACE/rnnoise-link-line.log" ]; then
+              rnnoise_payload="$(
+                python3 -c 'from pathlib import Path; text = Path("rnnoise-link-line.log").read_text(encoding="utf-8", errors="replace"); print(text[:12000].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")'
+              )"
+              echo "::notice title=rnnoise-link-line::$rnnoise_payload"
+            fi
             {
               cmake --build out/android-arm64-native --target Telegram -j"$(nproc)"
 
@@ -435,6 +444,7 @@ jobs:
             cmake-output.log
             cmake-configure.log
             cmake-configure-tail.log
+            rnnoise-link-line.log
           if-no-files-found: ignore
 
       - name: Upload APK artifact
