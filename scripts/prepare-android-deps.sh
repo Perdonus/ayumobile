@@ -27,6 +27,23 @@ git_no_proxy() {
   env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy git "$@"
 }
 
+git_no_proxy_retry() {
+  local attempts="$1"
+  shift
+
+  local try rc
+  rc=0
+  for try in $(seq 1 "${attempts}"); do
+    if git_no_proxy "$@"; then
+      return 0
+    fi
+    rc=$?
+    echo "[DEPS] git command failed (attempt ${try}/${attempts}, rc=${rc}): git $*" >&2
+    sleep $((try * 5))
+  done
+  return "${rc}"
+}
+
 msg() {
   echo
   echo "[DEPS] $*"
@@ -153,16 +170,16 @@ ensure_repo() {
 
   if [ ! -d "${repo_dir}/.git" ]; then
     msg "clone ${name}"
-    git_no_proxy clone "${url}" "${repo_dir}"
+    git_no_proxy_retry 5 clone "${url}" "${repo_dir}"
   fi
 
   msg "checkout ${name} @ ${commit}"
-  git_no_proxy -C "${repo_dir}" fetch --tags --force origin
-  git_no_proxy -C "${repo_dir}" checkout -f "${commit}"
+  git_no_proxy_retry 5 -C "${repo_dir}" fetch --tags --force origin
+  git_no_proxy_retry 5 -C "${repo_dir}" checkout -f "${commit}"
 
   if [ "${with_submodules}" = "1" ]; then
-    git_no_proxy -C "${repo_dir}" submodule sync --recursive
-    git_no_proxy -C "${repo_dir}" submodule update --init --recursive
+    git_no_proxy_retry 5 -C "${repo_dir}" submodule sync --recursive
+    git_no_proxy_retry 5 -C "${repo_dir}" submodule update --init --recursive
   fi
 }
 
