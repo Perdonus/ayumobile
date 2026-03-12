@@ -12,8 +12,9 @@ fi
 apply_patch_file() {
   local submodule_path="$1"
   local patch_file="$2"
+  local submodule_dir="$ROOT_DIR/$submodule_path"
 
-  if [[ ! -d "$ROOT_DIR/$submodule_path" ]]; then
+  if [[ ! -d "$submodule_dir" ]]; then
     echo "Submodule directory is missing: $submodule_path" >&2
     exit 1
   fi
@@ -22,18 +23,30 @@ apply_patch_file() {
     exit 1
   fi
 
-  if git -C "$ROOT_DIR/$submodule_path" apply --check --reverse "$patch_file" >/dev/null 2>&1; then
+  if ! git -C "$submodule_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Submodule is not a git worktree, reinitializing: $submodule_path"
+    git -C "$ROOT_DIR" submodule sync -- "$submodule_path" || true
+    git -C "$ROOT_DIR" submodule update --init --recursive "$submodule_path"
+  fi
+
+  if ! git -C "$submodule_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Failed to initialize submodule git worktree: $submodule_path" >&2
+    exit 1
+  fi
+
+  echo "Applying patch for: $submodule_path"
+  if git -C "$submodule_dir" apply --check --reverse "$patch_file" >/dev/null 2>&1; then
     echo "Already applied: $submodule_path"
     return
   fi
 
-  if git -C "$ROOT_DIR/$submodule_path" apply --check "$patch_file" >/dev/null 2>&1; then
-    git -C "$ROOT_DIR/$submodule_path" apply "$patch_file"
+  if git -C "$submodule_dir" apply --check "$patch_file" >/dev/null 2>&1; then
+    git -C "$submodule_dir" apply "$patch_file"
     echo "Applied: $submodule_path"
     return
   fi
 
-  git -C "$ROOT_DIR/$submodule_path" apply --3way --whitespace=nowarn "$patch_file"
+  git -C "$submodule_dir" apply --3way --whitespace=nowarn "$patch_file"
   echo "Applied (3way): $submodule_path"
 }
 
