@@ -26,12 +26,16 @@ apply_patch_file() {
   if ! git -C "$submodule_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Submodule is not a git worktree, reinitializing: $submodule_path"
     git -C "$ROOT_DIR" submodule sync -- "$submodule_path" || true
-    git -C "$ROOT_DIR" submodule update --init --recursive "$submodule_path"
+    if ! git -C "$ROOT_DIR" submodule update --init --recursive "$submodule_path"; then
+      echo "::error title=submodule-init-failed::submodule=${submodule_path} stage=update" >&2
+      return 1
+    fi
   fi
 
   if ! git -C "$submodule_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Failed to initialize submodule git worktree: $submodule_path" >&2
-    exit 1
+    echo "::error title=submodule-init-failed::submodule=${submodule_path} stage=verify" >&2
+    return 1
   fi
 
   echo "Applying patch for: $submodule_path"
@@ -46,7 +50,10 @@ apply_patch_file() {
     return
   fi
 
-  git -C "$submodule_dir" apply --3way --whitespace=nowarn "$patch_file"
+  if ! git -C "$submodule_dir" apply --3way --whitespace=nowarn "$patch_file"; then
+    echo "::error title=submodule-patch-failed::submodule=${submodule_path} stage=apply-3way" >&2
+    return 1
+  fi
   echo "Applied (3way): $submodule_path"
 }
 
