@@ -288,6 +288,12 @@ jobs:
             tail -n 300 "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-android-tail.log" || true
             grep -nE "CMake Error at|error:|FAILED:|undefined reference|ninja: error" "$BUILD_LOG" \
               > "$GITHUB_WORKSPACE/build-android-errors.log" || true
+            config_line="$(grep -n "Configuring incomplete, errors occurred!" "$BUILD_LOG" | tail -n 1 | cut -d: -f1 || true)"
+            if [ -n "$config_line" ]; then
+              start=$((config_line > 120 ? config_line - 120 : 1))
+              end=$((config_line + 40))
+              sed -n "${start},${end}p" "$BUILD_LOG" > "$GITHUB_WORKSPACE/build-config-context.log" || true
+            fi
             if [ -s "$GITHUB_WORKSPACE/build-android-tail.log" ]; then
               tail_payload="$(
                 python3 -c 'from pathlib import Path; text = Path("build-android-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")'
@@ -309,6 +315,13 @@ jobs:
               )"
               echo "::error title=build-errors::$errors_payload"
             fi
+            if [ -s "$GITHUB_WORKSPACE/build-config-context.log" ]; then
+              tail -n 100 "$GITHUB_WORKSPACE/build-config-context.log" > "$GITHUB_WORKSPACE/build-config-context-tail.log" || true
+              config_payload="$(
+                python3 -c 'from pathlib import Path; text = Path("build-config-context-tail.log").read_text(encoding="utf-8", errors="replace"); print(text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"), end="")'
+              )"
+              echo "::error title=build-config-context::$config_payload"
+            fi
             {
               echo "### Build APK failed"
               echo
@@ -323,6 +336,14 @@ jobs:
                 echo
                 echo '```text'
                 cat "$GITHUB_WORKSPACE/build-android-errors.log"
+                echo '```'
+              fi
+              if [ -s "$GITHUB_WORKSPACE/build-config-context.log" ]; then
+                echo
+                echo "Configure context:"
+                echo
+                echo '```text'
+                cat "$GITHUB_WORKSPACE/build-config-context.log"
                 echo '```'
               fi
             } >> "$GITHUB_STEP_SUMMARY" || true
@@ -340,6 +361,8 @@ jobs:
             build-android-tail.log
             build-android-errors.log
             build-android-errors-tail.log
+            build-config-context.log
+            build-config-context-tail.log
           if-no-files-found: ignore
 
       - name: Save ccache
