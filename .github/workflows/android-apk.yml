@@ -133,37 +133,15 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install aqtinstall==3.2.1
 
-      - name: Restore Android SDK cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CI_CACHE_ROOT }}/android-sdk
-          key: android-sdk-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}
-
-      - name: Restore Qt cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CI_CACHE_ROOT }}/qt
-          key: qt-${{ runner.os }}-${{ env.QT_VER }}
-
-      - name: Restore deps cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.CI_CACHE_ROOT }}/android-deps
-            ${{ env.CI_CACHE_ROOT }}/android-deps-src
-            ${{ env.CI_CACHE_ROOT }}/host-codegen
-          key: deps-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-${{ hashFiles('scripts/prepare-android-deps.sh', 'scripts/build-host-codegen.sh') }}
-          restore-keys: |
-            deps-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-
-
-      - name: Restore ccache
-        id: restore-ccache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.CI_CACHE_ROOT }}/ccache
-          key: ccache-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-
+      - name: Init cache directories
+        run: |
+          set -euxo pipefail
+          mkdir -p "${CI_CACHE_ROOT}/android-sdk"
+          mkdir -p "${CI_CACHE_ROOT}/qt"
+          mkdir -p "${CI_CACHE_ROOT}/android-deps"
+          mkdir -p "${CI_CACHE_ROOT}/android-deps-src"
+          mkdir -p "${CI_CACHE_ROOT}/host-codegen"
+          mkdir -p "${CI_CACHE_ROOT}/ccache"
 
       - name: Install Android commandline-tools
         env:
@@ -455,13 +433,6 @@ jobs:
             cmake-configure.log
             cmake-configure-tail.log
           if-no-files-found: ignore
-
-      - name: Save ccache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.CI_CACHE_ROOT }}/ccache
-          key: ccache-${{ runner.os }}-${{ env.ANDROID_NDK_VERSION }}-${{ github.sha }}
 
       - name: Upload APK artifact
         if: success()
