@@ -71,7 +71,6 @@ endif()
 target_link_libraries(Telegram
 PRIVATE
     tdesktop::lib_tgcalls
-    desktop-app::external_rnnoise
 
     # Order in this list defines the order of include paths in command line.
     # We need to place desktop-app::external_minizip this early to have its

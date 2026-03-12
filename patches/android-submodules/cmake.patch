@@ -82,7 +82,10 @@ index a201e92..f1322ba 100644
 +                "LIBRARY_DIRS='${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}'")
 +        endif()
 +        target_link_libraries(external_rnnoise INTERFACE
-+            "${DESKTOP_APP_RNNOISE_STATIC_LIBRARY}")
++            -Wl,--whole-archive
++            "${DESKTOP_APP_RNNOISE_STATIC_LIBRARY}"
++            -Wl,--no-whole-archive
++        )
 +        if (DESKTOP_APP_RNNOISE_INCLUDE_DIRS)
 +            target_include_directories(external_rnnoise SYSTEM INTERFACE
 +                ${DESKTOP_APP_RNNOISE_INCLUDE_DIRS})
