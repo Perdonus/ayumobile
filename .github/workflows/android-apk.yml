@@ -207,6 +207,8 @@ jobs:
           CCACHE_DIR: ${{ env.CI_CACHE_ROOT }}/ccache
         run: |
           set -euxo pipefail
+          set -o errtrace
+          trap 'rc=$?; echo "::error title=build-step-preconfigure-failure::command=${BASH_COMMAND} rc=${rc}"; exit ${rc}' ERR
 
           export JAVA_HOME="${JAVA_HOME_17_X64}"
           export PATH="$JAVA_HOME/bin:$PATH"
@@ -251,6 +253,7 @@ jobs:
           CONFIGURE_LOG="$GITHUB_WORKSPACE/cmake-configure.log"
           : > "$BUILD_LOG"
 
+          trap - ERR
           set +e
           set +o pipefail
           cmake -S . -B out/android-arm64-native -GNinja \
