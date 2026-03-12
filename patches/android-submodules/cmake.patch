@@ -98,6 +98,21 @@ index a201e92..f1322ba 100644
      return()
  endif()
  
+diff --git a/external/webrtc/CMakeLists.txt b/external/webrtc/CMakeLists.txt
+index c4a0530..0f7ad43 100644
+--- a/external/webrtc/CMakeLists.txt
++++ b/external/webrtc/CMakeLists.txt
+@@ -10,6 +10,10 @@ add_library(desktop-app::external_webrtc ALIAS external_webrtc)
+ if (DESKTOP_APP_USE_PACKAGED OR LINUX)
+     find_package(tg_owt REQUIRED)
+     target_link_libraries(external_webrtc INTERFACE tg_owt::tg_owt)
++    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++        target_link_libraries(external_webrtc INTERFACE
++            desktop-app::external_rnnoise)
++    endif()
+     return()
+ endif()
+ 
 diff --git a/external/xxhash/CMakeLists.txt b/external/xxhash/CMakeLists.txt
 index 9c2d02b..1845741 100644
 --- a/external/xxhash/CMakeLists.txt
