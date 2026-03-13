@@ -66,6 +66,9 @@ if (ANDROID)
         QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
         ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android"
     )
+    # Keep rnnoise at the end of the final link line so Android lld can
+    # resolve tg_owt/tgcalls references from the packaged static archive.
+    target_link_libraries(Telegram PRIVATE desktop-app::external_rnnoise)
 endif()
 
 target_link_libraries(Telegram
