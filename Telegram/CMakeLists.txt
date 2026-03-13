@@ -2155,9 +2155,10 @@ elseif (APPLE)
         )
     endif()
 elseif (ANDROID)
+    get_filename_component(android_deps_lib_dir "${tg_owt_DIR}/../.." ABSOLUTE)
     target_link_libraries(Telegram
     PRIVATE
-        desktop-app::external_rnnoise
+        "$<LINK_GROUP:RESCAN,${android_deps_lib_dir}/libtg_owt.a,${android_deps_lib_dir}/librnnoise.a>"
     )
 else()
     include(${cmake_helpers_loc}/external/glib/generate_dbus.cmake)
