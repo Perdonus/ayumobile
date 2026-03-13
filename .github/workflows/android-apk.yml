@@ -298,36 +298,36 @@ jobs:
               )"
               echo "::notice title=rnnoise-link-line::$rnnoise_payload"
             fi
-            DEPS_PREFIX="$DEPS_PREFIX" python3 - <<'PY'
-            from pathlib import Path
-            import os
+            DEPS_PREFIX="$DEPS_PREFIX" python3 -c 'import textwrap; exec(textwrap.dedent("""
+              from pathlib import Path
+              import os
 
-            path = Path("out/android-arm64-native/build.ninja")
-            text = path.read_text(encoding="utf-8", errors="replace")
-            late_group = (
-                f" -Xlinker --start-group {os.environ['DEPS_PREFIX']}/lib/libtg_owt.a"
-                f" {os.environ['DEPS_PREFIX']}/lib/librnnoise.a -Xlinker --end-group"
-            )
-            patched = False
-            updated_lines = []
+              path = Path("out/android-arm64-native/build.ninja")
+              text = path.read_text(encoding="utf-8", errors="replace")
+              late_group = (
+                  f" -Xlinker --start-group {os.environ[\"DEPS_PREFIX\"]}/lib/libtg_owt.a"
+                  f" {os.environ[\"DEPS_PREFIX\"]}/lib/librnnoise.a -Xlinker --end-group"
+              )
+              patched = False
+              updated_lines = []
 
-            for line in text.splitlines():
-                if (
-                    not patched
-                    and "LINK_LIBRARIES =" in line
-                    and "Telegram/liblib_tgcalls.a" in line
-                    and "libtg_owt.a" in line
-                ):
-                    if late_group not in line:
-                        line += late_group
-                    patched = True
-                updated_lines.append(line)
+              for line in text.splitlines():
+                  if (
+                      not patched
+                      and "LINK_LIBRARIES =" in line
+                      and "Telegram/liblib_tgcalls.a" in line
+                      and "libtg_owt.a" in line
+                  ):
+                      if late_group not in line:
+                          line += late_group
+                      patched = True
+                  updated_lines.append(line)
 
-            if not patched:
-                raise SystemExit("failed to patch Telegram LINK_LIBRARIES in build.ninja")
+              if not patched:
+                  raise SystemExit("failed to patch Telegram LINK_LIBRARIES in build.ninja")
 
-            path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
-            PY
+              path.write_text("\\n".join(updated_lines) + "\\n", encoding="utf-8")
+            """))'
             grep -nE "LINK_LIBRARIES = .*librnnoise\\.a|LINK_LIBRARIES = .*libtg_owt\\.a" \
               out/android-arm64-native/build.ninja \
               > "$GITHUB_WORKSPACE/rnnoise-link-line-patched.log" || true
