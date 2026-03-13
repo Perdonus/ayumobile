@@ -490,8 +490,31 @@ build_tde2e() {
 }
 
 build_tg_owt() {
+  local targets_file="${PREFIX}/lib/cmake/tg_owt/tg_owtTargets.cmake"
+
+  patch_tg_owt_targets() {
+    [ -f "${targets_file}" ] || return 0
+
+    python3 - "${targets_file}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+old = r';\$<LINK_ONLY:tg_owt::librnnoise>'
+
+if old not in text:
+    print("tg_owt targets already patched")
+    raise SystemExit(0)
+
+path.write_text(text.replace(old, '', 1))
+print("patched tg_owtTargets.cmake to drop early rnnoise link")
+PY
+  }
+
   if [ -f "${PREFIX}/lib/libtg_owt.a" ] && [ -f "${PREFIX}/lib/cmake/tg_owt/tg_owtConfig.cmake" ]; then
     msg "tg_owt already built"
+    patch_tg_owt_targets
     return
   fi
   ensure_repo "tg_owt" "https://github.com/desktop-app/tg_owt.git" "5c5c71258777d0196dbb3a09cc37d2f56ead28ab" "1"
@@ -522,6 +545,7 @@ build_tg_owt() {
     -DOPENSSL_SSL_LIBRARY="${PREFIX}/lib/libssl.a" \
     -DOPENSSL_CRYPTO_LIBRARY="${PREFIX}/lib/libcrypto.a"
   cmake --build "${SRC_ROOT}/tg_owt/out/android-arm64" --target install -j"${NPROC}"
+  patch_tg_owt_targets
 }
 
 validate_outputs() {
