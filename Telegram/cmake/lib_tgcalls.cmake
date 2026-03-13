@@ -211,9 +211,19 @@ PRIVATE
     desktop-app::external_ffmpeg
     desktop-app::external_openssl
     desktop-app::external_zlib
-PUBLIC
-    desktop-app::external_rnnoise
 )
+
+if (ANDROID)
+    target_link_libraries(lib_tgcalls
+    PRIVATE
+        desktop-app::external_rnnoise
+    )
+else()
+    target_link_libraries(lib_tgcalls
+    PUBLIC
+        desktop-app::external_rnnoise
+    )
+endif()
 
 target_compile_definitions(lib_tgcalls
 PUBLIC
