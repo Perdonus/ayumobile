@@ -214,9 +214,11 @@ PRIVATE
 )
 
 if (ANDROID)
+    get_filename_component(android_deps_lib_dir "${tg_owt_DIR}/../.." ABSOLUTE)
     target_link_libraries(lib_tgcalls
     PRIVATE
         desktop-app::external_rnnoise
+        "$<LINK_GROUP:RESCAN,${android_deps_lib_dir}/libtg_owt.a,${android_deps_lib_dir}/librnnoise.a>"
     )
 else()
     target_link_libraries(lib_tgcalls
