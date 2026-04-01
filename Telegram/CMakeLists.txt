@@ -2155,14 +2155,10 @@ elseif (APPLE)
         )
     endif()
 elseif (ANDROID)
-    get_target_property(android_tg_owt_path tg_owt::tg_owt IMPORTED_LOCATION_RELEASE)
-    if (NOT android_tg_owt_path)
-        get_target_property(android_tg_owt_path tg_owt::tg_owt IMPORTED_LOCATION)
+    if (NOT tg_owt_DIR)
+        message(FATAL_ERROR "Failed to resolve tg_owt_DIR for Android.")
     endif()
-    if (NOT android_tg_owt_path)
-        message(FATAL_ERROR "Failed to resolve tg_owt imported library path for Android.")
-    endif()
-    get_filename_component(android_deps_lib_dir "${android_tg_owt_path}" DIRECTORY)
+    get_filename_component(android_deps_lib_dir "${tg_owt_DIR}/../.." ABSOLUTE)
     target_link_libraries(Telegram
     PRIVATE
         -Wl,--whole-archive
