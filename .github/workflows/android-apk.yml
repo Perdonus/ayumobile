@@ -318,7 +318,7 @@ jobs:
                       and "Telegram/liblib_tgcalls.a" in line
                       and "libtg_owt.a" in line
                   ):
-                      if late_group not in line:
+                      if not line.rstrip().endswith(late_group):
                           line += late_group
                       patched = True
                   updated_lines.append(line)
