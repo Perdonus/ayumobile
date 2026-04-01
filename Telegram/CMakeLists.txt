@@ -2155,6 +2155,20 @@ elseif (APPLE)
         )
     endif()
 elseif (ANDROID)
+    get_target_property(android_tg_owt_path tg_owt::tg_owt IMPORTED_LOCATION_RELEASE)
+    if (NOT android_tg_owt_path)
+        get_target_property(android_tg_owt_path tg_owt::tg_owt IMPORTED_LOCATION)
+    endif()
+    if (NOT android_tg_owt_path)
+        message(FATAL_ERROR "Failed to resolve tg_owt imported library path for Android.")
+    endif()
+    get_filename_component(android_deps_lib_dir "${android_tg_owt_path}" DIRECTORY)
+    target_link_libraries(Telegram
+    PRIVATE
+        -Wl,--whole-archive
+        "${android_deps_lib_dir}/librnnoise.a"
+        -Wl,--no-whole-archive
+    )
 else()
     include(${cmake_helpers_loc}/external/glib/generate_dbus.cmake)
     generate_dbus(Telegram org.freedesktop.portal. XdpBackground ${third_party_loc}/xdg-desktop-portal/data/org.freedesktop.portal.Background.xml)
