@@ -192,6 +192,32 @@ index 775c8e6..126be0a 100644
  elseif (LINUX)
      include(cmake/options_linux.cmake)
  else()
+diff --git a/variables.cmake b/variables.cmake
+index 8c496c5..a48c894 100644
+--- a/variables.cmake
++++ b/variables.cmake
+@@ -20,6 +20,12 @@ if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
+     set(disable_autoupdate 1)
+ endif()
+ 
++set(disable_crashreports 0)
++if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
++    OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++    set(disable_crashreports 1)
++endif()
++
+ set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "")
+ set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase" CACHE STRING "")
+ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
+@@ -30,7 +36,7 @@ cmake_dependent_option(DESKTOP_APP_DISABLE_X11_INTEGRATION "Disable all code for
+ cmake_dependent_option(DESKTOP_APP_USE_ALLOCATION_TRACER "Use simple allocation tracer." OFF LINUX OFF)
+ option(DESKTOP_APP_USE_PACKAGED_FONTS "Use preinstalled fonts instead of bundled patched ones." OFF)
+ option(DESKTOP_APP_USE_PACKAGED_RLOTTIE "Find rlottie using CMake instead of bundled patched one." OFF)
+-option(DESKTOP_APP_DISABLE_CRASH_REPORTS "Disable crash report generation." ${no_special_target})
++option(DESKTOP_APP_DISABLE_CRASH_REPORTS "Disable crash report generation." ${disable_crashreports})
+ option(DESKTOP_APP_DISABLE_AUTOUPDATE "Disable autoupdate." ${disable_autoupdate})
+ option(DESKTOP_APP_DISABLE_QT_PLUGINS "Disable bundled Qt plugins." OFF)
+ option(DESKTOP_APP_USE_HUNSPELL_ONLY "Disable system spellchecker and use bundled Hunspell only. (For debugging purposes)" OFF)
 diff --git a/validate_special_target.cmake b/validate_special_target.cmake
 index 57e0950..16f7674 100644
 --- a/validate_special_target.cmake
