@@ -38,6 +38,21 @@ index a054a58..0d7d8bf 100644
      find_package(OpenAL REQUIRED CONFIG)
      target_link_libraries(external_openal INTERFACE OpenAL::OpenAL)
      return()
+diff --git a/external/auto_updates/CMakeLists.txt b/external/auto_updates/CMakeLists.txt
+index 981e8df..6efcfd1 100644
+--- a/external/auto_updates/CMakeLists.txt
++++ b/external/auto_updates/CMakeLists.txt
+@@ -7,7 +7,9 @@
+ add_library(external_auto_updates INTERFACE IMPORTED GLOBAL)
+ add_library(desktop-app::external_auto_updates ALIAS external_auto_updates)
+ 
+-if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE)
++if (NOT ANDROID
++    AND NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "android"
++    AND NOT DESKTOP_APP_DISABLE_AUTOUPDATE)
+     if (WIN32 AND NOT DESKTOP_APP_USE_PACKAGED)
+         add_subdirectory(lzma)
+         target_link_libraries(external_auto_updates
 diff --git a/external/webrtc/CMakeLists.txt b/external/webrtc/CMakeLists.txt
 index c4a0530..19fe25c 100644
 --- a/external/webrtc/CMakeLists.txt
