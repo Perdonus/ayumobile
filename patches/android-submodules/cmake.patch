@@ -221,3 +221,39 @@ index 57e0950..16f7674 100644
  else()
      set(LINUX 1)
      if (NOT DESKTOP_APP_SPECIAL_TARGET STREQUAL "linux")
+diff --git a/options_android.cmake b/options_android.cmake
+new file mode 100644
+index 0000000..9da5291
+--- /dev/null
++++ b/options_android.cmake
+@@ -0,0 +1,24 @@
++# This file is part of Desktop App Toolkit,
++# a set of libraries for developing nice desktop applications.
++#
++# For license and copyright information please follow this link:
++# https://github.com/desktop-app/legal/blob/master/LEGAL
++
++target_compile_options(common_options
++INTERFACE
++    -fPIC
++    -pipe
++    $<$<NOT:$<CONFIG:Debug>>:-fno-strict-aliasing>
++)
++
++target_compile_options_if_exists(common_options
++INTERFACE
++    -Wall
++    -Wextra
++    -Wno-unused-parameter
++    -Wno-switch
++    -Wno-maybe-uninitialized
++    -Wno-missing-field-initializers
++    -Wno-sign-compare
++    -Wno-deprecated
++)
++
++target_link_libraries(common_options
++INTERFACE
++    log
++    android
++)
