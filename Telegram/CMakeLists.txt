@@ -2155,16 +2155,6 @@ elseif (APPLE)
         )
     endif()
 elseif (ANDROID)
-    if (NOT tg_owt_DIR)
-        message(FATAL_ERROR "Failed to resolve tg_owt_DIR for Android.")
-    endif()
-    get_filename_component(android_deps_lib_dir "${tg_owt_DIR}/../.." ABSOLUTE)
-    target_link_libraries(Telegram
-    PRIVATE
-        -Wl,--whole-archive
-        "${android_deps_lib_dir}/librnnoise.a"
-        -Wl,--no-whole-archive
-    )
 else()
     include(${cmake_helpers_loc}/external/glib/generate_dbus.cmake)
     generate_dbus(Telegram org.freedesktop.portal. XdpBackground ${third_party_loc}/xdg-desktop-portal/data/org.freedesktop.portal.Background.xml)

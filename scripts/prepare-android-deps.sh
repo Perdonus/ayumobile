@@ -114,6 +114,46 @@ EOF
     >/dev/null 2>&1
 }
 
+check_rnnoise_object_link() {
+  local object_path="${PREFIX}/lib/librnnoise_combined.o"
+  local output_path="${DEPS_ROOT}/.archive-check/rnnoise-object-check.so"
+  local source_path="${DEPS_ROOT}/.archive-check/rnnoise-object-check.c"
+
+  [ -f "${object_path}" ] || return 1
+
+  mkdir -p "$(dirname "${output_path}")"
+  cat > "${source_path}" <<'EOF'
+#include <rnnoise.h>
+
+int archive_check_symbol(void) {
+  float frame[480] = { 0 };
+  DenoiseState *state = rnnoise_create(0);
+  if (!state) {
+    return 1;
+  }
+  rnnoise_process_frame(state, frame, frame);
+  rnnoise_destroy(state);
+  return 0;
+}
+EOF
+
+  archive_has_symbol "${object_path}" "rnnoise_create" || return 1
+  archive_has_symbol "${object_path}" "rnnoise_process_frame" || return 1
+  archive_has_symbol "${object_path}" "rnnoise_destroy" || return 1
+
+  "${CC}" \
+    --sysroot="${SYSROOT}" \
+    -shared \
+    -fPIC \
+    -I"${PREFIX}/include" \
+    "${source_path}" \
+    "${object_path}" \
+    "${PREFIX}/lib/libopus.a" \
+    -lm \
+    -o "${output_path}" \
+    >/dev/null 2>&1
+}
+
 localize_rnnoise_archive_symbols() {
   local archive_path="${PREFIX}/lib/librnnoise.a"
   local work_dir="${DEPS_ROOT}/.archive-fix/rnnoise"
@@ -137,6 +177,28 @@ localize_rnnoise_archive_symbols() {
     "${AR}" crs "${archive_path}" "${members[@]}"
   )
   "${RANLIB}" "${archive_path}"
+}
+
+build_rnnoise_link_object() {
+  local archive_path="${PREFIX}/lib/librnnoise.a"
+  local object_path="${PREFIX}/lib/librnnoise_combined.o"
+  local work_dir="${DEPS_ROOT}/.archive-fix/rnnoise-link-object"
+  local members_file="${work_dir}/members.txt"
+
+  rm -rf "${work_dir}"
+  mkdir -p "${work_dir}"
+
+  (
+    cd "${work_dir}"
+    "${AR}" t "${archive_path}" > "${members_file}"
+    "${AR}" x "${archive_path}"
+    mapfile -t members < "${members_file}"
+    "${CC}" \
+      --sysroot="${SYSROOT}" \
+      -r \
+      "${members[@]}" \
+      -o "${object_path}"
+  )
 }
 
 check_rnnoise_archive() {
@@ -320,13 +382,18 @@ build_libvpx() {
 }
 
 build_rnnoise() {
-  if [ -f "${PREFIX}/lib/librnnoise.a" ] && [ -f "${PREFIX}/lib/pkgconfig/rnnoise.pc" ]; then
-    if check_rnnoise_archive; then
+  if [ -f "${PREFIX}/lib/librnnoise.a" ] \
+    && [ -f "${PREFIX}/lib/librnnoise_combined.o" ] \
+    && [ -f "${PREFIX}/lib/pkgconfig/rnnoise.pc" ]; then
+    if check_rnnoise_archive && check_rnnoise_object_link; then
       msg "rnnoise already built"
       return
     fi
     msg "rnnoise cache is invalid, rebuilding"
-    rm -f "${PREFIX}/lib/librnnoise.a" "${PREFIX}/lib/pkgconfig/rnnoise.pc"
+    rm -f \
+      "${PREFIX}/lib/librnnoise.a" \
+      "${PREFIX}/lib/librnnoise_combined.o" \
+      "${PREFIX}/lib/pkgconfig/rnnoise.pc"
   fi
   ensure_repo "rnnoise" "https://github.com/xiph/rnnoise.git" "cdf196b1e9de2f8ff1003328ebf9a4316477429d"
   (
@@ -346,7 +413,9 @@ build_rnnoise() {
     make install
   )
   localize_rnnoise_archive_symbols
+  build_rnnoise_link_object
   check_rnnoise_archive
+  check_rnnoise_object_link
 }
 
 build_openssl() {
@@ -556,6 +625,7 @@ validate_outputs() {
     "${PREFIX}/lib/libopenh264.a"
     "${PREFIX}/lib/libvpx.a"
     "${PREFIX}/lib/librnnoise.a"
+    "${PREFIX}/lib/librnnoise_combined.o"
     "${PREFIX}/lib/libssl.a"
     "${PREFIX}/lib/libcrypto.a"
     "${PREFIX}/lib/libtde2e.a"
