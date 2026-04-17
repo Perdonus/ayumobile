@@ -289,7 +289,7 @@ jobs:
           cat "$CONFIGURE_LOG" >> "$BUILD_LOG"
 
           if [ "$configure_rc" -eq 0 ]; then
-            grep -nE "LINK_LIBRARIES = .*librnnoise\\.a|LINK_LIBRARIES = .*libtg_owt\\.a" \
+            grep -nE "LINK_LIBRARIES = .*(-lrnnoise|librnnoise(_combined)?\\.(a|o)|libtg_owt\\.a)" \
               out/android-arm64-native/build.ninja \
               > "$GITHUB_WORKSPACE/rnnoise-link-line.log" || true
             if [ -s "$GITHUB_WORKSPACE/rnnoise-link-line.log" ]; then
@@ -305,30 +305,36 @@ jobs:
 
               path = Path("out/android-arm64-native/build.ninja")
               text = path.read_text(encoding="utf-8", errors="replace")
-              late_group = (
-                  f" -Xlinker --start-group {os.environ[\"DEPS_PREFIX\"]}/lib/libtg_owt.a"
-                  f" {os.environ[\"DEPS_PREFIX\"]}/lib/librnnoise.a -Xlinker --end-group"
+              deps_prefix = os.environ["DEPS_PREFIX"]
+              rnnoise_archive = f"{deps_prefix}/lib/librnnoise.a"
+              rnnoise_object = f"{deps_prefix}/lib/librnnoise_combined.o"
+              tg_owt_lib = f"{deps_prefix}/lib/libtg_owt.a"
+              early_group = re.compile(
+                  rf"\\s+-Xlinker --start-group\\s+{re.escape(tg_owt_lib)}\\s+{re.escape(rnnoise_archive)}\\s+-Xlinker --end-group"
               )
               patched = False
               updated_lines = []
 
               for line in text.splitlines():
-                  if "LINK_LIBRARIES =" in line and "-lrnnoise" in line:
-                      line = re.sub(
-                          r"(^| )-lrnnoise(?= |$)",
-                          lambda match: (
-                              f"{match.group(1)}{os.environ[\"DEPS_PREFIX\"]}/lib/librnnoise.a"
-                          ),
-                          line,
-                      )
                   if (
-                      not patched
                       and "LINK_LIBRARIES =" in line
                       and "Telegram/liblib_tgcalls.a" in line
-                      and "libtg_owt.a" in line
                   ):
-                      if not line.rstrip().endswith(late_group):
-                          line += late_group
+                      prefix, separator, payload = line.partition("LINK_LIBRARIES =")
+                      payload = early_group.sub(" ", payload)
+                      payload = re.sub(r"(^| )-lrnnoise(?= |$)", " ", payload)
+                      payload = payload.replace(rnnoise_archive, " ")
+                      payload = payload.replace(rnnoise_object, " ")
+                      payload = re.sub(r"\\s+", " ", payload).strip()
+
+                      marker = f"-Wl,--start-group {tg_owt_lib}"
+                      if marker in payload:
+                          payload = payload.replace(marker, f"{rnnoise_object} {marker}", 1)
+                      else:
+                          payload = f"{payload} {rnnoise_object}".strip()
+
+                      payload = re.sub(r"\\s+", " ", payload).strip()
+                      line = f"{prefix}{separator} {payload}"
                       patched = True
                   updated_lines.append(line)
 
@@ -337,7 +343,7 @@ jobs:
 
               path.write_text("\\n".join(updated_lines) + "\\n", encoding="utf-8")
             """))'
-            grep -nE "LINK_LIBRARIES = .*librnnoise\\.a|LINK_LIBRARIES = .*libtg_owt\\.a" \
+            grep -nE "LINK_LIBRARIES = .*(-lrnnoise|librnnoise(_combined)?\\.(a|o)|libtg_owt\\.a)" \
               out/android-arm64-native/build.ninja \
               > "$GITHUB_WORKSPACE/rnnoise-link-line-patched.log" || true
             if [ -s "$GITHUB_WORKSPACE/rnnoise-link-line-patched.log" ]; then
@@ -349,15 +355,11 @@ jobs:
             {
               cmake --build out/android-arm64-native --target Telegram -j"$(nproc)"
 
-              cmake --build out/android-arm64-native --target apk -j"$(nproc)"
-              apk_rc=$?
-              if [ "$apk_rc" -ne 0 ]; then
-                cmake --build out/android-arm64-native --target Telegram_apk -j"$(nproc)"
-                apk_rc=$?
-              fi
-
+              apk_rc=0
+              cmake --build out/android-arm64-native --target apk -j"$(nproc)" || apk_rc=$?
               if [ "$apk_rc" -ne 0 ]; then
                 echo "APK target failed." >&2
+                cmake --build out/android-arm64-native --target help 2>&1 | tee -a "$BUILD_LOG" || true
                 exit "$apk_rc"
               fi
 
