@@ -54,32 +54,24 @@ index 981e8df..6efcfd1 100644
          add_subdirectory(lzma)
          target_link_libraries(external_auto_updates
 diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
-index 89506cd..34f1b79 100644
+index a201e92..54d34d6 100644
 --- a/external/rnnoise/CMakeLists.txt
 +++ b/external/rnnoise/CMakeLists.txt
-@@ -5,6 +5,23 @@
- # https://github.com/desktop-app/legal/blob/master/LEGAL
+@@ -12,6 +12,15 @@ if (DESKTOP_APP_USE_PACKAGED)
+     pkg_check_modules(DESKTOP_APP_RNNOISE REQUIRED IMPORTED_TARGET rnnoise)
  
- if (DESKTOP_APP_USE_PACKAGED)
-+    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
-+        add_library(external_rnnoise STATIC IMPORTED GLOBAL)
-+        add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
-+
-+        find_path(DESKTOP_APP_RNNOISE_INCLUDE_DIRS rnnoise.h REQUIRED)
-+        find_library(DESKTOP_APP_RNNOISE_LIBRARIES NAMES rnnoise REQUIRED)
-+
-+        target_include_directories(external_rnnoise SYSTEM
-+        INTERFACE
-+            ${DESKTOP_APP_RNNOISE_INCLUDE_DIRS}
-+        )
-+        set_target_properties(external_rnnoise PROPERTIES
-+            IMPORTED_LOCATION "${DESKTOP_APP_RNNOISE_LIBRARIES}"
-+        )
-+        return()
+     target_link_libraries(external_rnnoise INTERFACE PkgConfig::DESKTOP_APP_RNNOISE)
++    if (DESKTOP_APP_RNNOISE_LIBRARY_DIRS)
++        set_property(TARGET external_rnnoise APPEND PROPERTY
++            INTERFACE_LINK_DIRECTORIES "${DESKTOP_APP_RNNOISE_LIBRARY_DIRS}")
++        if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++            foreach(rnnoise_lib_dir ${DESKTOP_APP_RNNOISE_LIBRARY_DIRS})
++                target_link_options(external_rnnoise INTERFACE "-L${rnnoise_lib_dir}")
++            endforeach()
++        endif()
 +    endif()
-+
-     add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)
-     add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
+     return()
+ endif()
  
 diff --git a/external/webrtc/CMakeLists.txt b/external/webrtc/CMakeLists.txt
 index c4a0530..19fe25c 100644
