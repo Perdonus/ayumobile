@@ -427,12 +427,12 @@ build_openssl() {
   (
     cd "${SRC_ROOT}/openssl-android"
     make clean || true
+    msg "building openssl (android-arm64, no-asm)"
     PATH="${TOOLCHAIN}/bin:${PATH}" \
-      perl ./Configure android-arm64 no-shared no-tests \
+      perl ./Configure android-arm64 no-shared no-tests no-asm \
       --prefix="${PREFIX}" \
-      --openssldir="${PREFIX}/ssl" \
-      "-D__ANDROID_API__=${ANDROID_API}"
-    make -j"${NPROC}"
+      --openssldir="${PREFIX}/ssl"
+    timeout --foreground 45m make -j"${NPROC}"
     make install_sw
   )
 }

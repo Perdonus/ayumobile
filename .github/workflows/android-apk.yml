@@ -45,7 +45,7 @@ jobs:
       ANDROID_API: "29"
       ANDROID_COMPILE_SDK: "34"
       ANDROID_BUILD_TOOLS: "34.0.0"
-      ANDROID_NDK_VERSION: "26.1.10909125"
+      ANDROID_NDK_VERSION: "26.3.11579264"
       CI_CACHE_ROOT: ${{ github.workspace }}/.ci-cache
     steps:
       - name: Checkout (git retry)
