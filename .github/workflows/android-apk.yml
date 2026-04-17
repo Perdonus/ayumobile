@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: android-apk-${{ github.event_name == 'check_suite' && github.event.check_suite.head_sha || github.event_name == 'check_run' && github.event.check_run.head_sha || github.sha }}
+  group: android-apk-${{ github.event_name == 'push' && github.ref_name || github.event_name == 'workflow_dispatch' && github.ref_name || github.event_name == 'check_suite' && github.event.check_suite.head_branch || github.event_name == 'check_run' && github.event.check_run.check_suite.head_branch || github.sha }}
   cancel-in-progress: true
 
 jobs:

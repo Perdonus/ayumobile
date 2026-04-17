@@ -593,10 +593,63 @@ PY
     sed -i "s/#elif defined(WEBRTC_LINUX)/#elif defined(WEBRTC_LINUX) || defined(__ANDROID__)/" "${byte_order_file}"
   fi
 
+  local tg_owt_cmake_file="${SRC_ROOT}/tg_owt/CMakeLists.txt"
+  python3 - "${tg_owt_cmake_file}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+new = """if (ANDROID)
+    if (ANDROID_ABI STREQUAL "arm64-v8a")
+        set(is_aarch64 1)
+        set(arm_use_neon 1)
+    elseif (ANDROID_ABI STREQUAL "x86_64")
+        set(is_x64 1)
+    elseif (ANDROID_ABI STREQUAL "x86")
+        set(is_x86 1)
+    elseif (ANDROID_ABI STREQUAL "armeabi-v7a")
+        set(is_arm 1)
+        set(is_arm7 1)
+        set(arm_use_neon 1)
+    else()
+        include(cmake/arch.cmake)
+    endif()
+elseif (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+    set(is_aarch64 1)
+    set(arm_use_neon 1)
+else()
+    if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
+        set(is_x64 1)
+    else()
+        include(cmake/arch.cmake)
+    endif()
+endif()
+"""
+old = """if (CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
+    set(is_aarch64 1)
+    set(arm_use_neon 1)
+else()
+    if(CMAKE_OSX_ARCHITECTURES STREQUAL "x86_64")
+        set(is_x64 1)
+    else()
+        include(cmake/arch.cmake)
+    endif()
+endif()
+"""
+if new in text:
+    print("tg_owt Android ABI arch patch already applied")
+    raise SystemExit(0)
+if old not in text:
+    raise SystemExit("tg_owt arch block not found")
+path.write_text(text.replace(old, new, 1))
+print("patched tg_owt CMakeLists for Android ABI arch detection")
+PY
+
   rm -rf "${SRC_ROOT}/tg_owt/out/android-arm64"
   PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${FFMPEG_PREFIX}/lib/pkgconfig" \
   PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig:${FFMPEG_PREFIX}/lib/pkgconfig" \
-  cmake -S "${SRC_ROOT}/tg_owt" -B "${SRC_ROOT}/tg_owt/out/android-arm64" -GNinja \
+  timeout --foreground 20m cmake -S "${SRC_ROOT}/tg_owt" -B "${SRC_ROOT}/tg_owt/out/android-arm64" -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=arm64-v8a \
@@ -613,7 +666,7 @@ PY
     -DOPENSSL_INCLUDE_DIR="${PREFIX}/include" \
     -DOPENSSL_SSL_LIBRARY="${PREFIX}/lib/libssl.a" \
     -DOPENSSL_CRYPTO_LIBRARY="${PREFIX}/lib/libcrypto.a"
-  cmake --build "${SRC_ROOT}/tg_owt/out/android-arm64" --target install -j"${NPROC}"
+  timeout --foreground 120m cmake --build "${SRC_ROOT}/tg_owt/out/android-arm64" --target install -j"${NPROC}"
   patch_tg_owt_targets
 }
 
