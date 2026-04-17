@@ -193,10 +193,18 @@ index 775c8e6..126be0a 100644
      include(cmake/options_linux.cmake)
  else()
 diff --git a/variables.cmake b/variables.cmake
-index 8c496c5..a48c894 100644
+index 8c496c5..23e3d6d 100644
 --- a/variables.cmake
 +++ b/variables.cmake
-@@ -20,6 +20,12 @@ if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
+@@ -13,6 +13,7 @@ endif()
+ 
+ set(disable_autoupdate 0)
+ if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
++    OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "android"
+     OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp"
+     OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwp64"
+     OR DESKTOP_APP_SPECIAL_TARGET STREQUAL "uwparm"
+@@ -20,6 +21,12 @@ if (DESKTOP_APP_SPECIAL_TARGET STREQUAL ""
      set(disable_autoupdate 1)
  endif()
  
@@ -209,7 +217,7 @@ index 8c496c5..a48c894 100644
  set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "")
  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase" CACHE STRING "")
  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
-@@ -30,7 +36,7 @@ cmake_dependent_option(DESKTOP_APP_DISABLE_X11_INTEGRATION "Disable all code for
+@@ -30,7 +37,7 @@ cmake_dependent_option(DESKTOP_APP_DISABLE_X11_INTEGRATION "Disable all code for
  cmake_dependent_option(DESKTOP_APP_USE_ALLOCATION_TRACER "Use simple allocation tracer." OFF LINUX OFF)
  option(DESKTOP_APP_USE_PACKAGED_FONTS "Use preinstalled fonts instead of bundled patched ones." OFF)
  option(DESKTOP_APP_USE_PACKAGED_RLOTTIE "Find rlottie using CMake instead of bundled patched one." OFF)
