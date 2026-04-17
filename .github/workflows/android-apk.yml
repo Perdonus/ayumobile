@@ -317,7 +317,7 @@ jobs:
 
               for line in text.splitlines():
                   if (
-                      and "LINK_LIBRARIES =" in line
+                      "LINK_LIBRARIES =" in line
                       and "Telegram/liblib_tgcalls.a" in line
                   ):
                       prefix, separator, payload = line.partition("LINK_LIBRARIES =")
