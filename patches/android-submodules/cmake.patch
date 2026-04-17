@@ -53,6 +53,34 @@ index 981e8df..6efcfd1 100644
      if (WIN32 AND NOT DESKTOP_APP_USE_PACKAGED)
          add_subdirectory(lzma)
          target_link_libraries(external_auto_updates
+diff --git a/external/rnnoise/CMakeLists.txt b/external/rnnoise/CMakeLists.txt
+index 89506cd..34f1b79 100644
+--- a/external/rnnoise/CMakeLists.txt
++++ b/external/rnnoise/CMakeLists.txt
+@@ -5,6 +5,23 @@
+ # https://github.com/desktop-app/legal/blob/master/LEGAL
+ 
+ if (DESKTOP_APP_USE_PACKAGED)
++    if (DESKTOP_APP_SPECIAL_TARGET STREQUAL "android")
++        add_library(external_rnnoise STATIC IMPORTED GLOBAL)
++        add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
++
++        find_path(DESKTOP_APP_RNNOISE_INCLUDE_DIRS rnnoise.h REQUIRED)
++        find_library(DESKTOP_APP_RNNOISE_LIBRARIES NAMES rnnoise REQUIRED)
++
++        target_include_directories(external_rnnoise SYSTEM
++        INTERFACE
++            ${DESKTOP_APP_RNNOISE_INCLUDE_DIRS}
++        )
++        set_target_properties(external_rnnoise PROPERTIES
++            IMPORTED_LOCATION "${DESKTOP_APP_RNNOISE_LIBRARIES}"
++        )
++        return()
++    endif()
++
+     add_library(external_rnnoise INTERFACE IMPORTED GLOBAL)
+     add_library(desktop-app::external_rnnoise ALIAS external_rnnoise)
+ 
 diff --git a/external/webrtc/CMakeLists.txt b/external/webrtc/CMakeLists.txt
 index c4a0530..19fe25c 100644
 --- a/external/webrtc/CMakeLists.txt

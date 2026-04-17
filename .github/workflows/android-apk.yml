@@ -301,6 +301,7 @@ jobs:
             DEPS_PREFIX="$DEPS_PREFIX" python3 -c 'import textwrap; exec(textwrap.dedent("""
               from pathlib import Path
               import os
+              import re
 
               path = Path("out/android-arm64-native/build.ninja")
               text = path.read_text(encoding="utf-8", errors="replace")
@@ -312,6 +313,14 @@ jobs:
               updated_lines = []
 
               for line in text.splitlines():
+                  if "LINK_LIBRARIES =" in line and "-lrnnoise" in line:
+                      line = re.sub(
+                          r"(^| )-lrnnoise(?= |$)",
+                          lambda match: (
+                              f"{match.group(1)}{os.environ[\"DEPS_PREFIX\"]}/lib/librnnoise.a"
+                          ),
+                          line,
+                      )
                   if (
                       not patched
                       and "LINK_LIBRARIES =" in line
